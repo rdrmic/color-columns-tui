@@ -1,13 +1,46 @@
 [package]
-name = "color-columns-tui"
-version = "0.0.0"
 edition = "2024"
+authors = ["rdrmic@gmail.com"]
+name = "color-columns-tui"
+description = "Color Columns"
+version = "0.0.1"
 
 [dependencies]
+ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
+log = "0.4.29"
+env_logger = { version = "0.11.10", default-features = false, features = ["color"] }
+anyhow = { version = "1.0.102", default-features = false, features = ["std"] }
+time = { version = "0.3.47", default-features = false, features = ["formatting", "macros"] }
+
+[lints.rust]
+deprecated_safe_2024 = "forbid"
+unsafe_code = "forbid"
+unused_variables = "deny"
+
+[lints.clippy]
+# --- Main groups ---
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# --- Choosen from the not used `restrictions` group ---
+print_stdout = "warn"
+todo = "warn"
+unwrap_used = "warn"
+panic = "allow"
+# --- "Silence the annoyance" section ---
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+cast_possible_truncation = "allow"
+too_many_lines = "allow"
+# --- The `cargo` group silencing ---
+cargo_common_metadata = "allow" # allow if publishing is not a concern
+multiple_crate_versions = "allow" # FIXME multiple versions for `strum_macros`: 0.26.4 & 0.27.2
 
 [profile.release]
 opt-level = "s"
 lto = true
 codegen-units = 1
-strip = "symbols"
+strip = true
 panic = "abort"
