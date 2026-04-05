@@ -1,13 +1,20 @@
 mod app;
-mod logger;
+mod logging;
 
 use anyhow::Context;
-use ratatui::{Terminal, crossterm, prelude::CrosstermBackend};
+use ratatui::{
+    Terminal,
+    backend::CrosstermBackend,
+    crossterm::{
+        self,
+        event::{DisableMouseCapture, EnableMouseCapture},
+    },
+};
 
 use crate::app::App;
 
 fn main() {
-    let log_file_path = logger::init_logger()
+    let log_file_path = logging::file::init_logger()
         .context("Failed to setup application logging")
         .inspect_err(|err| eprintln!("Warning: {err:?}"))
         .ok();
@@ -33,6 +40,9 @@ fn run_app() -> anyhow::Result<()> {
         .inspect(|()| log::info!("App exited normally"))
         .inspect_err(|err| log::error!("Fatal error: {err:#?}"));
 
+    if cfg!(feature = "dev-console") {
+        crossterm::execute!(std::io::stdout(), DisableMouseCapture)?;
+    }
     ratatui::restore();
 
     exit_result
@@ -60,6 +70,10 @@ fn init_terminal() -> anyhow::Result<Terminal<CrosstermBackend<std::io::Stdout>>
     let min_rows = 40;
     if rows < min_rows {
         anyhow::bail!("Terminal height must be at least {min_rows} rows (current: {rows})");
+    }
+
+    if cfg!(feature = "dev-console") {
+        crossterm::execute!(std::io::stdout(), EnableMouseCapture)?;
     }
 
     Ok(ratatui::init())

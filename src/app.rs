@@ -3,105 +3,140 @@ use std::time::{Duration, Instant};
 use anyhow::Context;
 use ratatui::{
     DefaultTerminal, Frame,
-    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
-    layout::{Constraint, Layout, Rect},
-    style::Color,
-    symbols::border,
-    widgets::{Block, Paragraph},
+    crossterm::{
+        self,
+        event::{self, Event, KeyCode, KeyEvent, MouseEventKind},
+    },
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::Line,
+    widgets::{Block, Borders, Paragraph},
 };
+
+use crate::logging;
 
 pub struct App {
     is_running: bool,
+    dev_console: logging::dev_console::DevConsole,
 }
 
 impl App {
-    const EVENT_LISTEN_RATE: Duration = Duration::from_millis(30);
-    const TICK_RATE: Duration = Duration::from_millis(1000);
+    const EVENT_LISTEN_RATE: Duration = Duration::from_secs(0);
+    const TICK_RATE: Duration = Duration::from_millis(16);
 
     pub fn new() -> anyhow::Result<Self> {
-        Ok(Self { is_running: true })
+        Ok(Self { is_running: true, dev_console: logging::dev_console::DevConsole::default() })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
-        terminal.clear()?;
-
-        let mut next_tick = Instant::now() + Self::TICK_RATE;
+        let mut last_tick = Instant::now();
 
         log::info!("Main loop is starting...");
         while self.is_running {
-            let is_user_input = if event::poll(Self::EVENT_LISTEN_RATE)? {
-                self.handle_events()?;
-                true
-            } else {
-                false
-            };
+            // 1. Draw the UI
+            terminal
+                .draw(|frame| {
+                    self.draw(frame);
+                })
+                .context("Failed to draw to terminal")?;
 
-            if is_user_input || Instant::now() >= next_tick {
-                self.refresh(&mut terminal)?;
-                next_tick = Instant::now() + Self::TICK_RATE;
+            // 2. Wait for input OR a tick timeout
+            let timeout = Self::TICK_RATE.checked_sub(last_tick.elapsed()).unwrap_or(Self::EVENT_LISTEN_RATE);
+
+            if crossterm::event::poll(timeout)? {
+                match event::read()? {
+                    Event::Key(key_event) if key_event.kind == event::KeyEventKind::Press => {
+                        self.handle_key_pressed(key_event)?;
+                    }
+                    Event::Mouse(mouse_event)
+                        if matches!(mouse_event.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) =>
+                    {
+                        self.dev_console.handle_mouse_scroll(mouse_event);
+                    }
+                    _ => {}
+                }
+            }
+
+            // 3. Logic Update (Gravity/Falling)
+            if last_tick.elapsed() >= Self::TICK_RATE {
+                //game_state.update(); // Move piece down based on internal timer
+                last_tick = Instant::now();
             }
         }
 
         Ok(())
     }
 
-    fn handle_events(&mut self) -> anyhow::Result<()> {
-        match event::read()? {
-            Event::Key(key) if key.kind == KeyEventKind::Press => self.handle_key_event(key)?,
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+    pub fn handle_key_pressed(&mut self, key: KeyEvent) -> anyhow::Result<()> {
         if let KeyCode::Char('q' | 'Q') = key.code {
-            self.quit()
+            self.quit();
         }
+        self.dev_console.handle_key(key);
 
         Ok(())
     }
 
-    // TODO refactor? tick handling is removed..
-    fn refresh(&mut self, terminal: &mut DefaultTerminal) -> anyhow::Result<()> {
-        terminal
-            .draw(|frame| {
-                self.draw(frame);
-            })
-            .context("Failed to draw to terminal")?;
-
-        Ok(())
-    }
-
-    // TODO optimize (only on changed states)?
+    // TODO optimize - draw only on changed states?
     fn draw(&mut self, frame: &mut Frame) {
-        let x = 3;
-        let y = 1;
-        let width = frame.area().width - 6;
-        let height = frame.area().height - 1;
+        let constraints = if cfg!(feature = "dev-console") {
+            [Constraint::Length(15), Constraint::Length(24), Constraint::Percentage(100)]
+        } else {
+            [Constraint::Length(15), Constraint::Length(24), Constraint::Length(0)]
+        };
 
-        let app_area = Rect::new(x, y, width, height);
+        // 1. Split screen into Left (Stats) and Right (Game Board)
+        let main_layout =
+            Layout::default().direction(Direction::Horizontal).constraints(constraints).split(frame.area());
 
-        let vertical_layout =
-            Layout::vertical([Constraint::Percentage(100), Constraint::Length(2)]).margin(0).spacing(0);
-        let [main_area, footer_area] = vertical_layout.areas(app_area);
+        let left_area = main_layout[0];
+        let game_area = main_layout[1];
+        let dev_log_area = main_layout[2];
 
-        // border
-        Self::draw_border(frame, main_area);
+        // 2. Sub-split Left Area for "Next Piece" and "Stats"
+        let left_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(16), Constraint::Length(20)])
+            .split(left_area);
+        self.draw_stats(frame, left_layout[1]);
 
-        // footer
-        Self::draw_footer(frame, footer_area);
+        // 3. Sub-split Game Area for Notifications and Game Board
+        let game_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(4), Constraint::Length(22)])
+            .split(game_area);
+        self.draw_game_board(frame, game_layout[1]);
+
+        self.dev_console.draw(frame, dev_log_area);
     }
 
-    fn draw_border(frame: &mut Frame, area: Rect) {
-        let contents_outer_area = Rect { x: area.x - 1, y: area.y, width: area.width + 2, height: area.height };
-        let contents_block = Block::bordered().border_set(border::ONE_EIGHTH_TALL).border_style(Color::Green);
-        frame.render_widget(contents_block, contents_outer_area);
+    fn draw_stats(&self, frame: &mut Frame, area: Rect) {
+        let stats_text = vec![
+            Line::from(""),
+            Line::from(vec!["SCORE".into()]).style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Line::from("329").style(Style::default().fg(Color::Gray)),
+            Line::from(""),
+            Line::from(vec!["MAX COMBO".into()]).style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
+            Line::from("63").style(Style::default().fg(Color::Gray)),
+            Line::from(""),
+            Line::from(vec!["HIGHSCORE".into()]).style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Line::from("3495").style(Style::default().fg(Color::Gray)),
+        ];
+
+        let stats =
+            Paragraph::new(stats_text).block(Block::default().padding(ratatui::widgets::Padding::horizontal(2)));
+
+        frame.render_widget(stats, area);
     }
 
-    fn draw_footer(frame: &mut Frame, area: Rect) {
-        let footer = Paragraph::new("Press <q> to quit").centered();
-        frame.render_widget(footer, area);
+    fn draw_game_board(&self, frame: &mut Frame, area: Rect) {
+        // Create the bounding box for the columns
+        let board_block = Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Indexed(245))); // Gray border
+
+        // We render a block to define the play area
+        frame.render_widget(board_block, area);
+
+        // Note: To render the colored blocks, you would iterate over your game grid
+        // and render tiny 1x2 Rects or specialized widgets inside 'area'.
     }
 
     const fn quit(&mut self) {
