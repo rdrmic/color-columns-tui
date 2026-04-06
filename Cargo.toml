@@ -3,7 +3,7 @@ edition = "2024"
 authors = ["rdrmic@gmail.com"]
 name = "color-columns-tui"
 description = "Color Columns"
-version = "0.0.4"
+version = "0.0.5"
 
 [dependencies]
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
@@ -13,7 +13,7 @@ anyhow = { version = "1.0.102", default-features = false, features = ["std"] }
 time = { version = "0.3.47", default-features = false, features = ["formatting", "macros"] }
 
 [features]
-#default = ["dev-console"]
+default = ["dev-console"]
 dev-console = []
 
 [lints.rust]

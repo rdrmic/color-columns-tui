@@ -42,3 +42,9 @@
 - Greatly improve `main.rs`: robustness, flexibility regarding non-essential conditions for app starting, error handling, panic protection, terminal restoration, logging
 
 // 613K (627.624)
+
+### 0.0.5 / 2026-04-06
+
+- Basic MVC
+
+// 614K (627.768)

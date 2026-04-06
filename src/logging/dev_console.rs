@@ -18,15 +18,15 @@ use ratatui::{
 // ============================================================================
 const MAX_CONSOLE_LOG_LINES: usize = 1024;
 
-struct DevConsole {
+struct DevConsoleState {
     pub lines: VecDeque<Line<'static>>,
     pub auto_scroll: bool,
     pub scroll_offset: u16,
     pub last_known_inner_height: u16,
 }
 
-static DEV_CONSOLE: LazyLock<Mutex<DevConsole>> = LazyLock::new(|| {
-    Mutex::new(DevConsole {
+static DEV_CONSOLE: LazyLock<Mutex<DevConsoleState>> = LazyLock::new(|| {
+    Mutex::new(DevConsoleState {
         lines: VecDeque::with_capacity(MAX_CONSOLE_LOG_LINES),
         auto_scroll: true,
         scroll_offset: 0,
@@ -101,23 +101,23 @@ pub fn draw(frame: &mut Frame, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
-fn acquire_console_mutex() -> MutexGuard<'static, DevConsole> {
+fn acquire_console_mutex() -> MutexGuard<'static, DevConsoleState> {
     DEV_CONSOLE.lock().expect("Acquiring Mutex failed")
 }
 
 /// Calculate the actual bottom
 // TODO verify and rename
-fn calculate_max_scroll_possible(console: &DevConsole) -> u16 {
+fn calculate_max_scroll_possible(console: &DevConsoleState) -> u16 {
     let log_len = console.lines.len() as u16;
     log_len.saturating_sub(console.last_known_inner_height)
 }
 
-const fn handle_scrolling_up(console: &mut DevConsole) {
+const fn handle_scrolling_up(console: &mut DevConsoleState) {
     console.auto_scroll = false;
     console.scroll_offset = console.scroll_offset.saturating_sub(1);
 }
 
-fn handle_scrolling_down(console: &mut DevConsole) {
+fn handle_scrolling_down(console: &mut DevConsoleState) {
     let max_scroll_possible = calculate_max_scroll_possible(console);
     console.scroll_offset = console.scroll_offset.saturating_add(1);
 
@@ -134,7 +134,7 @@ struct LogMessage {
     color: PrintColor,
 }
 
-/// Channel to decouple log messages sending and processing
+/// Channel to decouple log messages' sending from processing
 static LOG_CHANNEL: LazyLock<(Sender<LogMessage>, Mutex<Receiver<LogMessage>>)> = LazyLock::new(|| {
     let (tx, rx) = mpsc::channel();
     (tx, Mutex::new(rx))
@@ -146,8 +146,8 @@ pub fn send_log_message(msg: String, color: PrintColor) {
     let _ = tx.send(LogMessage { msg, color });
 }
 
-/// Moves all pending messages (as styled Lines) from the channel into the console struct
-fn flush_messages_as_lines(console: &mut DevConsole) {
+/// Moves all pending messages (as styled Lines) from the channel into the console state
+fn flush_messages_as_lines(console: &mut DevConsoleState) {
     let (_, rx_lock) = &*LOG_CHANNEL;
     if let Ok(rx) = rx_lock.lock() {
         while let Ok(log) = rx.try_recv() {

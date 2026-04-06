@@ -1,5 +1,7 @@
 mod app;
+mod game;
 mod logging;
+mod renderer;
 
 use anyhow::Context;
 use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
@@ -62,7 +64,7 @@ fn check_terminal_size() -> anyhow::Result<()> {
 fn set_terminal_title() {
     let title = [env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION")].concat();
     let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(&title))
-        .inspect(|()| log::debug!("Terminal title '{title}' set"))
+        .inspect(|()| log::info!("Terminal title '{title}' set"))
         .inspect_err(|err| log::warn!("Settting terminal title ({title}) failed: {err:?}"));
 }
 
