@@ -5,7 +5,7 @@ use ratatui::{
     DefaultTerminal, Frame,
     crossterm::{
         self,
-        event::{self, Event, KeyCode, KeyEvent, MouseEventKind},
+        event::{Event, KeyCode, KeyEvent, KeyEventKind},
     },
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -13,51 +13,38 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::logging;
-
 pub struct App {
     is_running: bool,
-    dev_console: logging::dev_console::DevConsole,
 }
 
 impl App {
-    const EVENT_LISTEN_RATE: Duration = Duration::from_secs(0);
     const TICK_RATE: Duration = Duration::from_millis(16);
 
     pub fn new() -> anyhow::Result<Self> {
-        Ok(Self { is_running: true, dev_console: logging::dev_console::DevConsole::default() })
+        Ok(Self { is_running: true })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
+        log::info!("Main loop is starting...");
+
         let mut last_tick = Instant::now();
 
-        log::info!("Main loop is starting...");
         while self.is_running {
-            // 1. Draw the UI
+            // 1. VIEW: Delegate all drawing to a UI module
             terminal
                 .draw(|frame| {
                     self.draw(frame);
                 })
                 .context("Failed to draw to terminal")?;
 
-            // 2. Wait for input OR a tick timeout
-            let timeout = Self::TICK_RATE.checked_sub(last_tick.elapsed()).unwrap_or(Self::EVENT_LISTEN_RATE);
-
-            if crossterm::event::poll(timeout)? {
-                match event::read()? {
-                    Event::Key(key_event) if key_event.kind == event::KeyEventKind::Press => {
-                        self.handle_key_pressed(key_event)?;
-                    }
-                    Event::Mouse(mouse_event)
-                        if matches!(mouse_event.kind, MouseEventKind::ScrollUp | MouseEventKind::ScrollDown) =>
-                    {
-                        self.dev_console.handle_mouse_scroll(mouse_event);
-                    }
-                    _ => {}
-                }
+            // 2. INPUT: Handle events
+            // Event Handling - stays here or in input.rs?
+            let event_waiting_time = Self::TICK_RATE.checked_sub(last_tick.elapsed()).unwrap_or(Duration::ZERO);
+            if crossterm::event::poll(event_waiting_time)? {
+                self.handle_events(&crossterm::event::read()?)?;
             }
 
-            // 3. Logic Update (Gravity/Falling)
+            // 3. MODEL: Game logic updates (blocks falling, stats updating, ...)
             if last_tick.elapsed() >= Self::TICK_RATE {
                 //game_state.update(); // Move piece down based on internal timer
                 last_tick = Instant::now();
@@ -67,30 +54,64 @@ impl App {
         Ok(())
     }
 
-    pub fn handle_key_pressed(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if let KeyCode::Char('q' | 'Q') = key.code {
-            self.quit();
+    fn handle_events(&mut self, event: &Event) -> anyhow::Result<()> {
+        match event {
+            // 1. Keyboard Events
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self.handle_key_pressed_event(key_event),
+
+            // 2. Mouse Events for DevConsole scrolling
+            #[cfg(feature = "dev-console")]
+            Event::Mouse(mouse_event)
+                if matches!(
+                    mouse_event.kind,
+                    crossterm::event::MouseEventKind::ScrollUp | crossterm::event::MouseEventKind::ScrollDown
+                ) =>
+            {
+                use crate::logging;
+                logging::dev_console::handle_mouse_scroll_event(*mouse_event);
+                Ok(())
+            }
+
+            _ => Ok(()),
         }
-        self.dev_console.handle_key(key);
+    }
+
+    fn handle_key_pressed_event(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
+        // --- PRIORITY 1: GLOBAL SYSTEM KEYS ---
+        // TODO: Add other system keys here (e.g., Pause, ...) or they should be handled by the game's key handler?
+        if let KeyCode::Char('q' | 'Q') = key_event.code {
+            self.quit();
+            return Ok(());
+        }
+
+        // --- PRIORITY 2: DEV CONSOLE KEYS ---
+        #[cfg(feature = "dev-console")]
+        {
+            use crate::logging;
+            if logging::dev_console::handle_key_pressed_event(key_event) {
+                return Ok(());
+            }
+        }
+
+        // --- PRIORITY 3: GAME LOGIC KEYS ---
+        // Pass the key to the game state (moving blocks, etc.)
+        //self.game_state.handle_input(key);
 
         Ok(())
     }
 
-    // TODO optimize - draw only on changed states?
     fn draw(&mut self, frame: &mut Frame) {
-        let constraints = if cfg!(feature = "dev-console") {
-            [Constraint::Length(15), Constraint::Length(24), Constraint::Percentage(100)]
-        } else {
-            [Constraint::Length(15), Constraint::Length(24), Constraint::Length(0)]
-        };
+        #[cfg(feature = "dev-console")]
+        let horizontal_constraints =
+            [Constraint::Length(15), Constraint::Length(24), Constraint::Length(17), Constraint::Min(0)];
+        #[cfg(not(feature = "dev-console"))]
+        let horizontal_constraints = [Constraint::Length(15), Constraint::Length(24)];
 
-        // 1. Split screen into Left (Stats) and Right (Game Board)
         let main_layout =
-            Layout::default().direction(Direction::Horizontal).constraints(constraints).split(frame.area());
+            Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(frame.area());
 
         let left_area = main_layout[0];
         let game_area = main_layout[1];
-        let dev_log_area = main_layout[2];
 
         // 2. Sub-split Left Area for "Next Piece" and "Stats"
         let left_layout = Layout::default()
@@ -106,7 +127,12 @@ impl App {
             .split(game_area);
         self.draw_game_board(frame, game_layout[1]);
 
-        self.dev_console.draw(frame, dev_log_area);
+        #[cfg(feature = "dev-console")]
+        {
+            use crate::logging;
+            let dev_console_area = main_layout[3];
+            logging::dev_console::draw(frame, dev_console_area);
+        }
     }
 
     fn draw_stats(&self, frame: &mut Frame, area: Rect) {
@@ -129,7 +155,6 @@ impl App {
     }
 
     fn draw_game_board(&self, frame: &mut Frame, area: Rect) {
-        // Create the bounding box for the columns
         let board_block = Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Indexed(245))); // Gray border
 
         // We render a block to define the play area

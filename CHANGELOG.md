@@ -7,7 +7,7 @@
 ### 0.0.1 / 2026-04-04
 
 - Add lints rules
-- Add basic `main`/`app` scaffolding and main loop
+- Add basic `main.rs`/`app.rs` scaffolding and main loop
 - Add logger
 - Shave off unnecessary dependencies and/or their features
 - Replace `color-eyre` with`anyhow`
@@ -19,7 +19,7 @@
 - Introduce the Main Buffer `stderr` messages and improve error handling
 - Put log file in a more appropriate location: ~/.local/state/env!("CARGO_PKG_NAME")
 - Check a minimum number of terminal columns and rows
-- Refactor `main` and `logger`
+- Refactor `main.rs` and `logger.rs`
 
 // 611K (625.328)
 
@@ -31,3 +31,14 @@
 - Improve frame rate and responsiveness
 
 // 622K (636.384)
+
+### 0.0.4 / 2026-04-06
+
+- opt-level = "z"
+- Rearrange and clean up `app.rs` as a preparation for MVC
+- Improve usage of "dev-console" feature
+- Improve `dev_console.rs` by introducing `std::sync::mpsc` for log messages
+- Make crate-wide available macros for colored logging to dev console
+- Greatly improve `main.rs`: robustness, flexibility regarding non-essential conditions for app starting, error handling, panic protection, terminal restoration, logging
+
+// 613K (627.624)

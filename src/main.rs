@@ -2,18 +2,15 @@ mod app;
 mod logging;
 
 use anyhow::Context;
-use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
-    crossterm::{
-        self,
-        event::{DisableMouseCapture, EnableMouseCapture},
-    },
-};
-
-use crate::app::App;
+use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
 
 fn main() {
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        restore_terminal();
+        original_hook(panic_info);
+    }));
+
     let log_file_path = logging::file::init_logger()
         .context("Failed to setup application logging")
         .inspect_err(|err| eprintln!("Warning: {err:?}"))
@@ -30,34 +27,22 @@ fn main() {
 }
 
 fn run_app() -> anyhow::Result<()> {
-    set_terminal_title().context("Failed to set terminal title")?;
+    check_terminal_size()?;
 
-    let terminal = init_terminal().context("Failed to initialize terminal")?;
+    set_terminal_title();
+    let terminal = init_terminal();
 
-    let exit_result = App::new()
+    let exit_result = app::App::new()
         .context("Failed to initialize the app")
         .and_then(|app| app.run(terminal))
         .inspect(|()| log::info!("App exited normally"))
         .inspect_err(|err| log::error!("Fatal error: {err:#?}"));
 
-    if cfg!(feature = "dev-console") {
-        crossterm::execute!(std::io::stdout(), DisableMouseCapture)?;
-    }
-    ratatui::restore();
-
+    restore_terminal();
     exit_result
 }
 
-fn set_terminal_title() -> anyhow::Result<()> {
-    let title = [env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION")].concat();
-    log::info!("{title}");
-
-    crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(title))?;
-
-    Ok(())
-}
-
-fn init_terminal() -> anyhow::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+fn check_terminal_size() -> anyhow::Result<()> {
     let (columns, rows) = crossterm::terminal::size().context("Failed to get terminal size")?;
     log::info!("Terminal size (columns x rows): {columns} x {rows}");
 
@@ -71,10 +56,30 @@ fn init_terminal() -> anyhow::Result<Terminal<CrosstermBackend<std::io::Stdout>>
     if rows < min_rows {
         anyhow::bail!("Terminal height must be at least {min_rows} rows (current: {rows})");
     }
+    Ok(())
+}
 
-    if cfg!(feature = "dev-console") {
-        crossterm::execute!(std::io::stdout(), EnableMouseCapture)?;
-    }
+fn set_terminal_title() {
+    let title = [env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION")].concat();
+    let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(&title))
+        .inspect(|()| log::debug!("Terminal title '{title}' set"))
+        .inspect_err(|err| log::warn!("Settting terminal title ({title}) failed: {err:?}"));
+}
 
-    Ok(ratatui::init())
+fn init_terminal() -> Terminal<CrosstermBackend<std::io::Stdout>> {
+    #[cfg(feature = "dev-console")]
+    let _ = crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)
+        .inspect(|()| log::debug!("Mouse event capturing enabled"))
+        .inspect_err(|err| log::warn!("Mouse event capturing enabling failed: {err:?}"));
+
+    ratatui::init()
+}
+
+fn restore_terminal() {
+    #[cfg(feature = "dev-console")]
+    let _ = crossterm::execute!(std::io::stdout(), crossterm::event::DisableMouseCapture)
+        .inspect(|()| log::debug!("Mouse event capturing disabled"))
+        .inspect_err(|err| log::warn!("Mouse event capturing disabling failed: {err:?}"));
+
+    ratatui::restore();
 }
