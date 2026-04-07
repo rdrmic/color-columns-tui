@@ -20,7 +20,7 @@ impl App {
     const RENDER_TICK_RATE: Duration = Duration::from_millis(16);
 
     pub fn new() -> anyhow::Result<Self> {
-        Ok(Self { is_running: true, game_state: GameState::new() })
+        Ok(Self { is_running: true, game_state: GameState::new()? })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
@@ -106,6 +106,11 @@ impl App {
         match key_event.code {
             KeyCode::Left => self.game_state.move_left(),
             KeyCode::Right => self.game_state.move_right(),
+            KeyCode::Up => self.game_state.rotate_up(),
+            KeyCode::Down => self.game_state.rotate_down(),
+            KeyCode::Char(' ') => self.game_state.drop(),
+
+            KeyCode::Char('s' | 'S') => self.game_state.tick(),
             _ => {}
         }
 

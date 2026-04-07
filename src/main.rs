@@ -1,4 +1,5 @@
 mod app;
+mod blocks;
 mod game;
 mod logging;
 mod renderer;

@@ -3,17 +3,20 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Paragraph},
 };
 
 use crate::game::GameState;
 
+const BOARD_WIDTH: u16 = GameState::BOARD_WIDTH as u16 * 2 + 2;
+const BOARD_HEIGHT: u16 = GameState::BOARD_HEIGHT as u16 + 2;
+
 pub fn render(frame: &mut Frame, state: &GameState) {
     #[cfg(feature = "dev-console")]
     let horizontal_constraints =
-        [Constraint::Length(15), Constraint::Length(24), Constraint::Length(17), Constraint::Min(0)];
+        [Constraint::Length(14), Constraint::Max(BOARD_WIDTH), Constraint::Length(17), Constraint::Min(0)];
     #[cfg(not(feature = "dev-console"))]
-    let horizontal_constraints = [Constraint::Length(15), Constraint::Length(24)];
+    let horizontal_constraints = [Constraint::Length(15), Constraint::Max(BOARD_WIDTH)];
 
     let main_layout =
         Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(frame.area());
@@ -24,14 +27,14 @@ pub fn render(frame: &mut Frame, state: &GameState) {
     // 2. Sub-split Left Area for "Next Piece" and "Stats"
     let left_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(16), Constraint::Length(20)])
+        .constraints([Constraint::Length(9), Constraint::Length(10)])
         .split(left_area);
     draw_stats(frame, left_layout[1], state);
 
     // 3. Sub-split Game Area for Notifications and Game Board
     let game_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(4), Constraint::Length(22)])
+        .constraints([Constraint::Length(4), Constraint::Max(BOARD_HEIGHT)])
         .split(game_area);
     draw_board(frame, game_layout[1], state);
 
@@ -61,12 +64,37 @@ fn draw_stats(frame: &mut Frame, area: Rect, _state: &GameState) {
     frame.render_widget(stats, area);
 }
 
-fn draw_board(frame: &mut Frame, area: Rect, _state: &GameState) {
-    let board_block = Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Indexed(245))); // Gray border
+fn draw_board(frame: &mut Frame, area: Rect, state: &GameState) {
+    // Draw the border
+    let buf = frame.buffer_mut();
+    buf.set_style(area, Style::default().fg(Color::Indexed(245)));
 
-    // We render a block to define the play area
-    frame.render_widget(board_block, area);
+    let left = area.left();
+    let right = area.right() - 1;
+    let top = area.top();
+    let bottom = area.bottom() - 1;
+    for x in left..=right {
+        for y in top..=bottom {
+            if let Some(cell) = buf.cell_mut((x, y))
+                && (x == left || x == right || y == top || y == bottom)
+            {
+                let symbol = match (x == left, x == right, y == top, y == bottom) {
+                    (true, _, true, _) => "▗", // LT corner
+                    (_, true, true, _) => "▖", // RT corner
+                    (true, _, _, true) => "▝", // LB corner
+                    (_, true, _, true) => "▘", // RB corner
+                    (true, _, _, _) => "🭵",    // Left edge
+                    (_, true, _, _) => "🭰",    // Right edge
+                    (_, _, true, _) => "▂",    // Top edge
+                    (_, _, _, true) => "▀",    // Bottom edge
+                    _ => " ",
+                };
+                cell.set_symbol(symbol);
+            }
+        }
+    }
 
-    // Note: To render the colored blocks, you would iterate over your game grid
-    // and render tiny 1x2 Rects or specialized widgets inside 'area'.
+    // Drow the falling column
+    let column_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
+    frame.render_widget(&state.column_falling, column_area);
 }

@@ -48,3 +48,12 @@
 - Basic MVC
 
 // 614K (627.768)
+
+### 0.0.6 / 2026-04-08
+
+- Create game board border "manually" (writting directly to terminal buffer)
+- Add `fastrand` dependency
+- Creating blocks in random colors
+- Falling, manipulable column, spawning at random x position
+
+// 623K (637.496)
