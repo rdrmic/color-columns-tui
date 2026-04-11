@@ -26,12 +26,7 @@ struct DevConsoleState {
 }
 
 static DEV_CONSOLE: LazyLock<Mutex<DevConsoleState>> = LazyLock::new(|| {
-    Mutex::new(DevConsoleState {
-        lines: VecDeque::with_capacity(MAX_CONSOLE_LOG_LINES),
-        auto_scroll: true,
-        scroll_offset: 0,
-        last_known_inner_height: 0,
-    })
+    Mutex::new(DevConsoleState { lines: VecDeque::with_capacity(MAX_CONSOLE_LOG_LINES), auto_scroll: true, scroll_offset: 0, last_known_inner_height: 0 })
 });
 
 pub fn handle_key_pressed_event(key_event: &KeyEvent) -> bool {
@@ -80,10 +75,9 @@ pub fn draw(frame: &mut Frame, area: Rect) {
         // Process any logs queued by macros before drawing
         flush_messages_as_lines(&mut console);
 
-        let block = Block::default()
-            .borders(Borders::ALL)
-            // " Navigate history ({MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> / <End> (reset auto-scroll) "
-            .title(format!(" Navigate history ({MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line, it re-enables auto-scroll) "))
+        let block = Block::bordered()
+            .title(format!(" Navigate history ({MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line; resets auto-scroll) "))
+            .style(Style::default().fg(Color::Indexed(40)))
             .padding(Padding::horizontal(1));
 
         // Save this for the input handler to use later
@@ -91,8 +85,7 @@ pub fn draw(frame: &mut Frame, area: Rect) {
 
         let max_scroll_possible = calculate_max_scroll_possible(&console);
 
-        console.scroll_offset =
-            if console.auto_scroll { max_scroll_possible } else { console.scroll_offset.min(max_scroll_possible) };
+        console.scroll_offset = if console.auto_scroll { max_scroll_possible } else { console.scroll_offset.min(max_scroll_possible) };
 
         let lines_vec = console.lines.iter().cloned().collect::<Vec<_>>();
         Paragraph::new(lines_vec).block(block).scroll((console.scroll_offset, 0))

@@ -54,6 +54,16 @@
 - Create game board border "manually" (writting directly to terminal buffer)
 - Add `fastrand` dependency
 - Creating blocks in random colors
-- Falling, manipulable column, spawning at random x position
+- Falling, manipulable column (handling user input), spawning at random x position
 
 // 623K (637.496)
+
+### 0.0.7 / 2026-04-11
+
+- Respawn columns in a loop
+- Pile up columns
+- Detect piled blocks for a falling column
+- Detect game over
+- Log panic error to file
+
+// 625K (639.392)

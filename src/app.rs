@@ -37,8 +37,7 @@ impl App {
                 .context("Failed to draw to terminal")?;
 
             // 1. Calculate time until the NEXT intended logic update
-            let time_to_next_logic =
-                self.game_state.tick_rate().checked_sub(last_logic_tick.elapsed()).unwrap_or(Duration::ZERO);
+            let time_to_next_logic = self.game_state.tick_rate().checked_sub(last_logic_tick.elapsed()).unwrap_or(Duration::ZERO);
 
             // 3. The poll timeout is the MINIMUM of our frame rate and logic rate
             // This ensures we wake up exactly when the block needs to fall
@@ -54,7 +53,7 @@ impl App {
             // 5. MODEL: Game logic updates (blocks falling, stats updating, ...)
             // Use 'while' instead of 'if' to catch up if the computer hitched
             while last_logic_tick.elapsed() >= self.game_state.tick_rate() {
-                self.game_state.tick();
+                self.is_running = self.game_state.tick();
                 last_logic_tick += self.game_state.tick_rate();
             }
         }
@@ -70,10 +69,7 @@ impl App {
             // 2. Mouse Events for DevConsole scrolling
             #[cfg(feature = "dev-console")]
             Event::Mouse(mouse_event)
-                if matches!(
-                    mouse_event.kind,
-                    crossterm::event::MouseEventKind::ScrollUp | crossterm::event::MouseEventKind::ScrollDown
-                ) =>
+                if matches!(mouse_event.kind, crossterm::event::MouseEventKind::ScrollUp | crossterm::event::MouseEventKind::ScrollDown) =>
             {
                 use crate::logging;
                 logging::dev_console::handle_mouse_scroll_event(*mouse_event);
@@ -110,7 +106,9 @@ impl App {
             KeyCode::Down => self.game_state.rotate_down(),
             KeyCode::Char(' ') => self.game_state.drop(),
 
-            KeyCode::Char('s' | 'S') => self.game_state.tick(),
+            KeyCode::Char('s' | 'S') => {
+                self.is_running = self.game_state.tick();
+            }
             _ => {}
         }
 

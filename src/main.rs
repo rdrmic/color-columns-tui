@@ -8,16 +8,14 @@ use anyhow::Context;
 use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
 
 fn main() {
+    let log_file_path = logging::file::init_logger().context("Failed to setup application logging").inspect_err(|err| eprintln!("Warning: {err:?}")).ok();
+
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
+        log::error!("FATAL: Application panicked:\n{panic_info}");
         restore_terminal();
         original_hook(panic_info);
     }));
-
-    let log_file_path = logging::file::init_logger()
-        .context("Failed to setup application logging")
-        .inspect_err(|err| eprintln!("Warning: {err:?}"))
-        .ok();
 
     if let Err(err) = run_app() {
         eprintln!("Error: {err}");

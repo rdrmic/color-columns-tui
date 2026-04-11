@@ -2,13 +2,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Ok};
 
-use crate::blocks::Column;
+use crate::blocks::{Column, Pile};
 
 // TODO pub
 pub struct GameState {
-    pub column_falling: Column,
-    pub score: u32,
-    //pub rng: fastrand::Rng,
+    column_falling: Column,
+    pile: Pile,
+    score: u32,
+    rng: fastrand::Rng,
     current_tick_rate: Duration,
 }
 
@@ -22,23 +23,36 @@ impl GameState {
     pub fn new() -> anyhow::Result<Self> {
         let mut rng = create_rng()?;
 
-        let column_falling_x = rng.u8(..Self::BOARD_WIDTH);
-
         Ok(Self {
-            column_falling: Column::new(column_falling_x, -3, &mut rng),
+            column_falling: Self::create_column(&mut rng),
+            pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT as u8),
             score: 0,
-            //rng,
+            rng,
             current_tick_rate: Self::INITIAL_TICK_RATE,
         })
     }
 
-    pub fn tick(&mut self) {
-        // Determine if we can move down
-        let bottom_y = self.column_falling.blocks[2].y;
-        if bottom_y < Self::BOARD_HEIGHT - 1 {
-            self.column_falling.move_down();
+    fn create_column(rng: &mut fastrand::Rng) -> Column {
+        let x = rng.u8(..Self::BOARD_WIDTH);
+        Column::new(x, -3, rng)
+    }
+
+    fn spawn_new_column(&mut self) {
+        self.column_falling = Self::create_column(&mut self.rng);
+    }
+
+    pub fn tick(&mut self) -> bool {
+        let next_y_bottom = self.column_falling.y_bottom() + 1;
+        let x = self.column_falling.x();
+
+        // Check collision with floor OR pile
+        if next_y_bottom < Self::BOARD_HEIGHT && !self.pile.is_occupied(x, next_y_bottom) {
+            self.column_falling.move_down(1);
         } else {
-            // Landing logic will be implemented in a future step
+            let is_locked = self.lock_column();
+            if !is_locked {
+                return false;
+            }
         }
 
         // Example Acceleration Logic:
@@ -47,18 +61,38 @@ impl GameState {
         if self.score > 0 && self.score.is_multiple_of(100) {
             self.accelerate(0.98);
         }
+        true
+    }
+
+    #[allow(clippy::cast_sign_loss)]
+    fn lock_column(&mut self) -> bool {
+        let is_set = self.pile.set(&self.column_falling);
+        if !is_set {
+            return false;
+        }
+
+        self.spawn_new_column();
+
+        self.tick();
+        true
     }
 
     pub fn move_left(&mut self) {
-        let x = self.column_falling.blocks[0].x;
-        if x > 0 {
+        let x = self.column_falling.x();
+        let y_bottom = self.column_falling.y_bottom();
+
+        // If the bottom gem can move left, the whole column can move left
+        if x > 0 && !self.pile.is_occupied(x - 1, y_bottom) {
             self.column_falling.move_left();
         }
     }
 
     pub fn move_right(&mut self) {
-        let x = self.column_falling.blocks[0].x;
-        if x < Self::BOARD_WIDTH - 1 {
+        let x = self.column_falling.x();
+        let y_bottom = self.column_falling.y_bottom();
+
+        // If the bottom gem can move right, the whole column can move right
+        if x < Self::BOARD_WIDTH - 1 && !self.pile.is_occupied(x + 1, y_bottom) {
             self.column_falling.move_right();
         }
     }
@@ -72,10 +106,17 @@ impl GameState {
     }
 
     pub fn drop(&mut self) {
-        let bottom_y = self.column_falling.blocks[2].y;
-        let distance = Self::BOARD_HEIGHT - 1 - bottom_y;
+        let x = self.column_falling.x();
 
-        self.column_falling.drop(distance);
+        // Find the first occupied row in the target column (top-down)
+        let first_occupied_y = (0..Self::BOARD_HEIGHT).find(|&y| self.pile.is_occupied(x, y)).unwrap_or(Self::BOARD_HEIGHT);
+
+        // Target is the row immediately above the first occupied gem (or the floor)
+        let distance = (first_occupied_y - 1) - self.column_falling.y_bottom();
+
+        if distance > 0 {
+            self.column_falling.move_down(distance);
+        }
 
         self.tick();
     }
@@ -90,6 +131,14 @@ impl GameState {
     // Getter so the App knows how long to wait
     pub const fn tick_rate(&self) -> Duration {
         self.current_tick_rate
+    }
+
+    pub const fn get_falling_column(&self) -> &Column {
+        &self.column_falling
+    }
+
+    pub const fn get_pile(&self) -> &Pile {
+        &self.pile
     }
 }
 

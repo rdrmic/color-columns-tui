@@ -13,29 +13,21 @@ const BOARD_HEIGHT: u16 = GameState::BOARD_HEIGHT as u16 + 2;
 
 pub fn render(frame: &mut Frame, state: &GameState) {
     #[cfg(feature = "dev-console")]
-    let horizontal_constraints =
-        [Constraint::Length(14), Constraint::Max(BOARD_WIDTH), Constraint::Length(17), Constraint::Min(0)];
+    let horizontal_constraints = [Constraint::Length(14), Constraint::Max(BOARD_WIDTH), Constraint::Length(17), Constraint::Min(0)];
     #[cfg(not(feature = "dev-console"))]
     let horizontal_constraints = [Constraint::Length(15), Constraint::Max(BOARD_WIDTH)];
 
-    let main_layout =
-        Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(frame.area());
+    let main_layout = Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(frame.area());
 
     let left_area = main_layout[0];
     let game_area = main_layout[1];
 
     // 2. Sub-split Left Area for "Next Piece" and "Stats"
-    let left_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(9), Constraint::Length(10)])
-        .split(left_area);
+    let left_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(9), Constraint::Length(10)]).split(left_area);
     draw_stats(frame, left_layout[1], state);
 
     // 3. Sub-split Game Area for Notifications and Game Board
-    let game_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(4), Constraint::Max(BOARD_HEIGHT)])
-        .split(game_area);
+    let game_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(4), Constraint::Max(BOARD_HEIGHT)]).split(game_area);
     draw_board(frame, game_layout[1], state);
 
     #[cfg(feature = "dev-console")]
@@ -64,8 +56,19 @@ fn draw_stats(frame: &mut Frame, area: Rect, _state: &GameState) {
     frame.render_widget(stats, area);
 }
 
-fn draw_board(frame: &mut Frame, area: Rect, state: &GameState) {
-    // Draw the border
+fn draw_board(frame: &mut Frame, area: Rect, game: &GameState) {
+    // Game board border
+    draw_board_border(frame, area);
+
+    let board_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
+
+    // Falling column
+    frame.render_widget(game.get_falling_column(), board_area);
+    // Pile
+    frame.render_widget(game.get_pile(), board_area);
+}
+
+fn draw_board_border(frame: &mut Frame, area: Rect) {
     let buf = frame.buffer_mut();
     buf.set_style(area, Style::default().fg(Color::Indexed(245)));
 
@@ -93,8 +96,4 @@ fn draw_board(frame: &mut Frame, area: Rect, state: &GameState) {
             }
         }
     }
-
-    // Drow the falling column
-    let column_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
-    frame.render_widget(&state.column_falling, column_area);
 }

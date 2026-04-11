@@ -1,18 +1,17 @@
 use std::{env, fs::File, io::Write, path::PathBuf};
 
 use anyhow::Context;
-use env_logger::Builder;
 use time::{OffsetDateTime, format_description::FormatItem, macros::format_description};
 
-static TIME_FORMAT: &[FormatItem] =
-    format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
+static TIME_FORMAT: &[FormatItem] = format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
 pub fn init_logger() -> anyhow::Result<PathBuf> {
     let log_file_path = assemble_log_file_path()?;
     let log_file = File::create(&log_file_path).context("Failed to create log file")?;
 
-    Builder::from_default_env()
+    env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Debug)
+        .write_style(env_logger::WriteStyle::Never)
         .format(move |buf, record| {
             let now = OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
 
