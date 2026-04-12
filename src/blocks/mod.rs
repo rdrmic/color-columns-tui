@@ -1,6 +1,6 @@
-pub mod block;
-pub mod column;
-pub mod pile;
+mod block;
+mod column;
+mod pile;
 
 pub use block::{Block, Gem};
 pub use column::Column;

@@ -67,3 +67,13 @@
 - Log panic error to file
 
 // 625K (639.392)
+
+### 0.0.8 / 2026-04-12
+
+- Delegated state pattern: stages with handlers and separate renders
+- Keys legend at the bottom
+- "Ready" stage
+- "Gameplay" stage
+- "Game Over" stage
+
+// 629K (643.128)

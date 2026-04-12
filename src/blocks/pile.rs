@@ -11,30 +11,35 @@ pub struct Pile {
 }
 
 impl Pile {
-    pub fn new(width: u8, height: u8) -> Self {
-        Self { width, height, grid: vec![None; (width as usize) * (height as usize)] }
+    pub const fn new(width: u8, height: u8) -> Self {
+        Self { width, height, grid: vec![] }
+    }
+
+    pub fn clear(&mut self) {
+        self.grid = vec![None; (self.width * self.height) as usize];
     }
 
     pub fn is_occupied(&self, x: u8, y: i8) -> bool {
+        // FIXME remove the checks
         if y < 0 {
             crate::dev_red!("pile::is_occupied: y is negative: {}", y);
             return false;
         } // Still in the "buffer" zone above the board
 
-        // if x >= self.width || y >= self.height as i8 {
-        //     if x >= self.width {
-        //         crate::dev_red!("pile::is_occupied: x is out of bounds: {}", x);
-        //     }
-        //     if y >= self.height as i8 {
-        //         crate::dev_red!("pile::is_occupied: y is out of bounds: {}", y);
-        //     }
-        //     return true;
-        // } // Out of bounds
+        if x >= self.width || y >= self.height as i8 {
+            if x >= self.width {
+                crate::dev_red!("pile::is_occupied: x is out of bounds: {}", x);
+            }
+            if y >= self.height as i8 {
+                crate::dev_red!("pile::is_occupied: y is out of bounds: {}", y);
+            }
+            return true;
+        } // Out of bounds
 
         self.get(x, y as u8).is_some()
     }
 
-    pub fn set(&mut self, column: &Column) -> bool {
+    pub fn lock(&mut self, column: &Column) -> bool {
         for (gem_x, gem_y, gem) in column.view_gems() {
             if gem_y >= 0 {
                 let idx = self.calculate_grid_idx(gem_x, gem_y as u8);

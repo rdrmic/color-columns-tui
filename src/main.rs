@@ -2,7 +2,8 @@ mod app;
 mod blocks;
 mod game;
 mod logging;
-mod renderer;
+mod rendering;
+mod stage_handlers;
 
 use anyhow::Context;
 use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
