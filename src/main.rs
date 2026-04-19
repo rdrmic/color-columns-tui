@@ -48,15 +48,15 @@ fn check_terminal_size() -> anyhow::Result<()> {
     let (columns, rows) = crossterm::terminal::size().context("Failed to get terminal size")?;
     log::info!("Terminal size (columns x rows): {columns} x {rows}");
 
-    // TODO check if minimum num of (columns x rows) is satisfied
-    let min_columns = 20;
+    // TODO check if minimum num of (columns x rows) is satisfied   // current maximized: 236 x 59
+    let min_columns = rendering::MIN_WINDOW_WIDTH;
     if columns < min_columns {
-        anyhow::bail!("Terminal width must be at least {min_columns} columns (current: {columns})");
+        log::warn!("Terminal width must be at least {min_columns} columns (current: {columns})");
     }
 
-    let min_rows = 40;
+    let min_rows = rendering::MIN_WINDOW_HEIGHT;
     if rows < min_rows {
-        anyhow::bail!("Terminal height must be at least {min_rows} rows (current: {rows})");
+        log::warn!("Terminal height must be at least {min_rows} rows (current: {rows})");
     }
     Ok(())
 }

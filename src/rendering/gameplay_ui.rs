@@ -1,26 +1,29 @@
-use ratatui::{Frame, text::Line};
+use std::sync::LazyLock;
 
-use super::{draw_board, draw_keys_legend, draw_stats, get_layout_areas};
+use ratatui::{Frame, text::Text};
+
+use super::{LayoutAreas, LegendItem, compile_legend, draw_board, draw_keys_legend, draw_stats};
 use crate::game::Game;
 
-pub(super) fn render(frame: &mut Frame, game: &Game) {
-    let layout_areas = get_layout_areas(frame.area());
+#[rustfmt::skip]
+const LEGEND_ITEMS: &[LegendItem] = &[
+    LegendItem { key: "Arrows",   action: "Move/Rotate" },
+    LegendItem { key: "0 (Zero)", action: "Accelerate" },
+    LegendItem { key: "Space",    action: "Drop" },
+    LegendItem { key: "Esc",      action: "Pause" },
+    LegendItem { key: "Q",        action: "Quit" },
+];
 
+static LEGEND: LazyLock<(Text<'_>, Text<'_>)> = LazyLock::new(|| compile_legend(LEGEND_ITEMS));
+
+pub(super) fn render(frame: &mut Frame, game: &Game, layout_areas: &LayoutAreas) {
     draw_board(frame, layout_areas.board, game);
     draw_stats(frame, layout_areas.stats, game);
-    draw_keys_legend(frame, layout_areas.footer, create_legend_items());
+    draw_keys_legend(frame, layout_areas.footer, &LEGEND);
 
     #[cfg(feature = "dev-console")]
     {
         use crate::logging;
         logging::dev_console::draw(frame, layout_areas.dev_console);
     }
-}
-
-#[rustfmt::skip]
-fn create_legend_items<'a>() -> [Vec<Line<'a>>; 2] {
-    [
-        vec![Line::from("Arrows"),      Line::from("0 (Zero)"),     Line::from("Space"),    Line::from("Esc"),      Line::from("Q")],
-        vec![Line::from("Move/Rotate"), Line::from("Accelerate"),   Line::from("Drop"),     Line::from("Pause"),    Line::from("Quit")]
-    ]
 }

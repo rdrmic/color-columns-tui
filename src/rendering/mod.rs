@@ -6,23 +6,67 @@ use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
+    text::{Line, Text},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::{game::Game, stage_handlers::Stage};
+
+#[cfg(feature = "dev-console")]
+pub const MIN_WINDOW_WIDTH: u16 = 160;
+#[cfg(not(feature = "dev-console"))]
+pub const MIN_WINDOW_WIDTH: u16 = 29;
+
+pub const MIN_WINDOW_HEIGHT: u16 = 29;
 
 const BOARD_WIDTH: u16 = Game::BOARD_WIDTH as u16 * 2 + 2;
 const BOARD_HEIGHT: u16 = Game::BOARD_HEIGHT as u16 + 2;
 
 pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
+    let frame_area = frame.area();
+
+    if is_terminal_window_too_small(frame_area) {
+        render_message_terminal_window_too_small(frame, frame_area);
+        return;
+    }
+
+    let layout_areas = get_layout_areas(frame_area);
     match stage {
-        Stage::Ready(_) => ready_ui::render(frame, game),
-        Stage::Gameplay(_) => gameplay_ui::render(frame, game),
-        Stage::GameOver(_) => gameover_ui::render(frame, game),
+        Stage::Ready(_) => ready_ui::render(frame, game, &layout_areas),
+        Stage::Gameplay(_) => gameplay_ui::render(frame, game, &layout_areas),
+        Stage::GameOver(_) => gameover_ui::render(frame, game, &layout_areas),
     }
 }
 
+// ============================================================================
+// Terminal window size check
+// ============================================================================
+const fn is_terminal_window_too_small(area: Rect) -> bool {
+    area.width < MIN_WINDOW_WIDTH || area.height < MIN_WINDOW_HEIGHT
+}
+
+fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
+    let msg = vec![
+        Line::styled("Terminal window too small!", Color::Red),
+        Line::from(""),
+        Line::styled(format!("Required: {MIN_WINDOW_WIDTH}x{MIN_WINDOW_HEIGHT}"), Color::Green),
+        Line::styled(format!("Current:  {}x{}", area.width, area.height), Color::Red),
+        Line::from(""),
+        Line::styled("Please resize the window to play.", Color::Green),
+    ];
+    frame.render_widget(
+        Paragraph::new(msg)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::Red))
+            .block(Block::bordered().border_style(Style::default().fg(Color::Indexed(240))))
+            .wrap(Wrap { trim: true }),
+        area,
+    );
+}
+
+// ============================================================================
+// Layout areas
+// ============================================================================
 struct LayoutAreas {
     pub board: Rect,
     pub stats: Rect,
@@ -31,7 +75,6 @@ struct LayoutAreas {
     pub dev_console: Rect,
 }
 
-/// Calculates the standard game layout to be used by all stages
 fn get_layout_areas(area: Rect) -> LayoutAreas {
     #[cfg(feature = "dev-console")]
     let horizontal_constraints = [Constraint::Length(BOARD_WIDTH + 15), Constraint::Length(17), Constraint::Min(0)];
@@ -61,6 +104,9 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
     }
 }
 
+// ============================================================================
+// Game: stats and board
+// ============================================================================
 fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
     let stats_vertical_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(9), Constraint::Length(10)]).split(area);
     let target_area = stats_vertical_layout[1];
@@ -94,6 +140,7 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game) {
     frame.render_widget(game.get_pile(), board_inner_area);
 }
 
+#[rustfmt::skip]
 fn draw_board_border(frame: &mut Frame, area: Rect) {
     let buf = frame.buffer_mut();
     buf.set_style(area, Style::default().fg(Color::Indexed(245)));
@@ -108,14 +155,14 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
                 && (x == left || x == right || y == top || y == bottom)
             {
                 let symbol = match (x == left, x == right, y == top, y == bottom) {
-                    (true, _, true, _) => "▗", // LT corner
-                    (_, true, true, _) => "▖", // RT corner
-                    (true, _, _, true) => "▝", // LB corner
-                    (_, true, _, true) => "▘", // RB corner
-                    (true, _, _, _) => "🭵",    // Left edge
-                    (_, true, _, _) => "🭰",    // Right edge
-                    (_, _, true, _) => "▂",    // Top edge
-                    (_, _, _, true) => "▀",    // Bottom edge
+                    (true, _, true, _)  => "▗", // LT corner
+                    (_, true, true, _)  => "▖", // RT corner
+                    (true, _, _, true)  => "▝", // LB corner
+                    (_, true, _, true)  => "▘", // RB corner
+                    (true, _, _, _)     => "🭵", // Left edge
+                    (_, true, _, _)     => "🭰", // Right edge
+                    (_, _, true, _)     => "▂", // Top edge
+                    (_, _, _, true)     => "▀", // Bottom edge
                     _ => " ",
                 };
                 cell.set_symbol(symbol);
@@ -124,7 +171,35 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
     }
 }
 
-fn draw_keys_legend(frame: &mut Frame, area: Rect, items: [Vec<Line<'_>>; 2]) {
+// ============================================================================
+// Keys legend
+// ============================================================================
+const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).add_modifier(Modifier::BOLD);
+const STYLE_ACTIONS: Style = Style::new().fg(Color::Indexed(152));
+
+struct LegendItem {
+    pub key: &'static str,
+    pub action: &'static str,
+}
+
+#[rustfmt::skip]
+fn compile_legend(legend: &[LegendItem]) -> (Text<'static>, Text<'static>) {
+    let keys = Text::from(
+        legend.iter()
+            .map(|item| Line::from(item.key).style(STYLE_KEYS))
+            .collect::<Vec<_>>()
+    ).alignment(Alignment::Left);
+
+    let actions = Text::from(
+        legend.iter()
+            .map(|item| Line::from(item.action).style(STYLE_ACTIONS))
+            .collect::<Vec<_>>()
+    ).alignment(Alignment::Left);
+
+    (keys, actions)
+}
+
+fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)) {
     let legend_block = Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::Indexed(245)));
     frame.render_widget(&legend_block, area);
 
@@ -132,10 +207,8 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, items: [Vec<Line<'_>>; 2]) {
     let keys_area = horizontal_layout[1];
     let actions_area = horizontal_layout[2];
 
-    let style_keys = Style::default().fg(Color::Indexed(150)).add_modifier(Modifier::BOLD);
-    let style_actions = Style::default().fg(Color::Indexed(152));
+    let (keys, actions) = legend;
 
-    let [keys, actions] = items;
-    frame.render_widget(Paragraph::new(keys).style(style_keys).alignment(Alignment::Left), keys_area);
-    frame.render_widget(Paragraph::new(actions).style(style_actions).alignment(Alignment::Left), actions_area);
+    frame.render_widget(Paragraph::new(keys.clone()), keys_area);
+    frame.render_widget(Paragraph::new(actions.clone()), actions_area);
 }

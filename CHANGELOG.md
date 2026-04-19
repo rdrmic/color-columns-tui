@@ -77,3 +77,12 @@
 - "Game Over" stage
 
 // 629K (643.128)
+
+### 0.0.9 / 2026-04-19
+
+- Add terminal size checking and accompanying in-console user message
+- Improve layout areas handling
+- Optimize and improve keys legend mechanism
+- `cargo update`
+
+// 630K (644.232)
