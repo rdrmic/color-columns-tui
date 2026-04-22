@@ -4,11 +4,12 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game::Game,
-    stage_handlers::{GameOverHandler, Stage, StageHandler},
+    stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, Stage, StageHandler},
 };
 
+#[derive(Debug)]
 pub struct GameplayHandler {
-    last_tick: Instant, // Tracks the last time the block moved down (gravity)
+    last_tick: Instant, // tracks the last time the block moved down (gravity)
 }
 
 impl GameplayHandler {
@@ -16,9 +17,12 @@ impl GameplayHandler {
         Self { last_tick: Instant::now() }
     }
 
-    /// Returns the duration until the next game tick should occur
-    pub fn time_before_next_tick(&self, game: &Game) -> Duration {
-        game.tick_rate().checked_sub(self.last_tick.elapsed()).unwrap_or(Duration::ZERO)
+    fn try_updating_tick(&mut self, game: &mut Game, next_tick: Instant) -> Option<Stage> {
+        if !game.tick() {
+            return Some(Stage::GameOver(GameOverHandler::new()));
+        }
+        self.last_tick = next_tick;
+        None
     }
 }
 
@@ -30,28 +34,37 @@ impl StageHandler for GameplayHandler {
             KeyCode::Up => game.rotate_up(),
             KeyCode::Down => game.rotate_down(),
             KeyCode::Char('0') | KeyCode::Insert => {
-                let is_still_running = game.tick();
-                if !is_still_running {
-                    return Some(Stage::GameOver(GameOverHandler));
+                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
+                    return Some(gameover_stage);
                 }
             }
-            KeyCode::Char(' ') => game.drop(),
+            KeyCode::Char(' ') => {
+                game.drop();
+                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
+                    return Some(gameover_stage);
+                }
+            }
             _ => (),
         }
         None
     }
 
+    fn time_before_next_tick(&mut self, game: &mut Game) -> Duration {
+        let time_before_next_game_tick =
+            if game.is_column_locked { Duration::ZERO } else { game.tick_rate().checked_sub(self.last_tick.elapsed()).unwrap_or(Duration::ZERO) };
+        FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
+    }
+
     fn update(&mut self, game: &mut Game) -> Option<Stage> {
         let tick_rate = game.tick_rate();
 
-        // Use `while` instead of `if` to catch up if the computer hitched
+        // use `while` instead of `if` to catch up if the computer hitched
         while self.last_tick.elapsed() >= tick_rate {
-            let is_running = game.tick();
-            if !is_running {
-                return Some(Stage::GameOver(GameOverHandler));
+            if let Some(gameover_stage) = self.try_updating_tick(game, self.last_tick + tick_rate) {
+                return Some(gameover_stage);
             }
-            self.last_tick += tick_rate;
         }
+
         None
     }
 }

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use anyhow::Context;
 use ratatui::{
     DefaultTerminal,
@@ -20,9 +18,6 @@ pub struct App {
 }
 
 impl App {
-    const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
-    const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
-
     pub fn new() -> anyhow::Result<Self> {
         Ok(Self { is_running: true, stage: Stage::Ready(ReadyHandler), game: Game::new()? })
     }
@@ -30,6 +25,7 @@ impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
         log::info!("Main loop is starting...");
 
+        crate::dev_gray!("### {:?}", self.stage);
         while self.is_running {
             terminal
                 .draw(|frame| {
@@ -37,23 +33,28 @@ impl App {
                 })
                 .context("Failed to draw to terminal")?;
 
-            // The poll waiting time is a MINIMUM of our frame rate and logic rate
-            // This ensures we wake up exactly when the block needs to fall
-            let event_waiting_time = match &self.stage {
-                Stage::Gameplay(gameplay_handler) => {
-                    let time_before_next_game_tick = gameplay_handler.time_before_next_tick(&self.game);
-                    Self::FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
-                }
-                _ => Self::FRAME_DURATION_IDLE,
-            };
+            if !self.game.is_column_locked {
+                self.tick();
+            }
+
+            let event_waiting_time = self.stage.time_before_next_tick(&mut self.game);
             if crossterm::event::poll(event_waiting_time)? {
                 self.handle_events(&crossterm::event::read()?);
             }
 
-            self.tick();
+            if self.game.is_column_locked {
+                self.game.is_column_locked = false;
+            }
         }
 
         Ok(())
+    }
+
+    fn tick(&mut self) {
+        if let Some(next_stage) = self.stage.update(&mut self.game) {
+            crate::dev_gray!("/// {next_stage:?}");
+            self.stage = next_stage;
+        }
     }
 
     fn handle_events(&mut self, event: &Event) {
@@ -90,14 +91,9 @@ impl App {
         }
 
         // Stages keys
-        if let Some(next_state) = self.stage.handle_key_pressed_event(&mut self.game, *key_event) {
-            self.stage = next_state;
-        }
-    }
-
-    fn tick(&mut self) {
-        if let Some(next_state) = self.stage.update(&mut self.game) {
-            self.stage = next_state;
+        if let Some(next_stage) = self.stage.handle_key_pressed_event(&mut self.game, *key_event) {
+            crate::dev_gray!("--> {next_stage:?}");
+            self.stage = next_stage;
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::crossterm::event::KeyEvent;
 
 use crate::game::Game;
@@ -10,6 +12,10 @@ pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;
 pub use ready::ReadyHandler;
 
+const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
+const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
+
+#[derive(Debug)]
 pub enum Stage {
     Ready(ReadyHandler),
     Gameplay(GameplayHandler),
@@ -20,23 +26,32 @@ pub enum Stage {
 
 pub trait StageHandler {
     fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage>;
+    fn time_before_next_tick(&mut self, game: &mut Game) -> Duration;
     fn update(&mut self, game: &mut Game) -> Option<Stage>;
 }
 
 impl StageHandler for Stage {
     fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage> {
         match self {
-            Self::Ready(stage) => stage.handle_key_pressed_event(game, key_event),
-            Self::Gameplay(stage) => stage.handle_key_pressed_event(game, key_event),
-            Self::GameOver(stage) => stage.handle_key_pressed_event(game, key_event),
+            Self::Ready(handler) => handler.handle_key_pressed_event(game, key_event),
+            Self::Gameplay(handler) => handler.handle_key_pressed_event(game, key_event),
+            Self::GameOver(handler) => handler.handle_key_pressed_event(game, key_event),
+        }
+    }
+
+    fn time_before_next_tick(&mut self, game: &mut Game) -> Duration {
+        match self {
+            Self::Ready(handler) => handler.time_before_next_tick(game),
+            Self::Gameplay(handler) => handler.time_before_next_tick(game),
+            Self::GameOver(handler) => handler.time_before_next_tick(game),
         }
     }
 
     fn update(&mut self, game: &mut Game) -> Option<Stage> {
         match self {
-            Self::Ready(stage) => stage.update(game),
-            Self::Gameplay(stage) => stage.update(game),
-            Self::GameOver(stage) => stage.update(game),
+            Self::Ready(handler) => handler.update(game),
+            Self::Gameplay(handler) => handler.update(game),
+            Self::GameOver(handler) => handler.update(game),
         }
     }
 }

@@ -86,3 +86,12 @@
 - `cargo update`
 
 // 630K (644.232)
+
+### 0.0.10 / 2026-04-22
+
+- Bump Rust: 1.94.1 -> 1.95.0
+- Show next column
+- Update timings because of the next column
+- Pile up columns until the `Gameover` stage
+
+// 627K (641.376)

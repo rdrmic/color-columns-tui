@@ -12,6 +12,7 @@ use ratatui::{
 
 use crate::{game::Game, stage_handlers::Stage};
 
+// TODO calculate terminal window minimum sizes dynamically?
 #[cfg(feature = "dev-console")]
 pub const MIN_WINDOW_WIDTH: u16 = 160;
 #[cfg(not(feature = "dev-console"))]
@@ -68,11 +69,12 @@ fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
 // Layout areas
 // ============================================================================
 struct LayoutAreas {
-    pub board: Rect,
-    pub stats: Rect,
-    pub footer: Rect,
+    next_column: Rect,
+    stats: Rect,
+    board: Rect,
+    footer: Rect,
     #[cfg(feature = "dev-console")]
-    pub dev_console: Rect,
+    dev_console: Rect,
 }
 
 fn get_layout_areas(area: Rect) -> LayoutAreas {
@@ -92,12 +94,18 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
     let game_horizontal_layout =
         Layout::default().direction(Direction::Horizontal).constraints([Constraint::Length(14), Constraint::Length(BOARD_WIDTH)]).split(game_area);
 
-    let stats_area = game_horizontal_layout[0];
+    let left_side_area = game_horizontal_layout[0];
     let board_area = game_horizontal_layout[1];
 
+    let left_side_vertical_layout =
+        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(5), Constraint::Length(4), Constraint::Min(0)]).split(left_side_area);
+    let next_column_area = left_side_vertical_layout[1];
+    let stats_area = left_side_vertical_layout[2];
+
     LayoutAreas {
-        board: board_area,
+        next_column: next_column_area,
         stats: stats_area,
+        board: board_area,
         footer: footer_area,
         #[cfg(feature = "dev-console")]
         dev_console: main_horizontal_layout[2],
@@ -105,12 +113,19 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 }
 
 // ============================================================================
-// Game: stats and board
+// Game: left side (next column and stats) and board
 // ============================================================================
-fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
-    let stats_vertical_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(9), Constraint::Length(10)]).split(area);
-    let target_area = stats_vertical_layout[1];
+// fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game) {
+//     frame.render_widget(game.get_next_column(), area);
+// }
 
+fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game) {
+    let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
+
+    frame.render_widget(game.get_next_column(), right_aligned_area);
+}
+
+fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
     let stats_text = vec![
         Line::from(""),
         Line::from(vec!["SCORE".into()]).style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
@@ -124,7 +139,7 @@ fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
     ];
 
     let stats = Paragraph::new(stats_text).block(Block::default().padding(ratatui::widgets::Padding::horizontal(2)));
-    frame.render_widget(stats, target_area);
+    frame.render_widget(stats, area);
 }
 
 fn draw_board(frame: &mut Frame, area: Rect, game: &Game) {
@@ -178,8 +193,8 @@ const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).add_modifier(Modi
 const STYLE_ACTIONS: Style = Style::new().fg(Color::Indexed(152));
 
 struct LegendItem {
-    pub key: &'static str,
-    pub action: &'static str,
+    key: &'static str,
+    action: &'static str,
 }
 
 #[rustfmt::skip]
@@ -208,7 +223,6 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)
     let actions_area = horizontal_layout[2];
 
     let (keys, actions) = legend;
-
     frame.render_widget(Paragraph::new(keys.clone()), keys_area);
     frame.render_widget(Paragraph::new(actions.clone()), actions_area);
 }

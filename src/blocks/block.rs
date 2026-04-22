@@ -19,14 +19,14 @@ const STYLE_SAPPHIRE: Style = Style::new().bg(Color::Blue);
 const STYLE_AMETHYST: Style = Style::new().bg(Color::Magenta);
 
 macro_rules! define_block_variants {
-    ($($variant:ident => $style:ident),*) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    ($($gem:ident => $style:ident),*) => {
+        #[derive(Clone, Copy, PartialEq, Eq)]
         pub enum Gem {
-            $($variant),*
+            $($gem),*
         }
 
         impl Gem {
-            pub const ALL: &[Self] = &[ $(Self::$variant),* ];
+            pub const ALL: &[Self] = &[ $(Self::$gem),* ];
             pub const COUNT: usize = Self::ALL.len();
 
             pub fn random(rng: &mut fastrand::Rng) -> Self {
@@ -35,9 +35,9 @@ macro_rules! define_block_variants {
         }
 
         impl From<Gem> for Style {
-            fn from(variant: Gem) -> Self {
-                match variant {
-                    $(Gem::$variant => $style),*
+            fn from(gem: Gem) -> Self {
+                match gem {
+                    $(Gem::$gem => $style),*
                 }
             }
         }
@@ -59,27 +59,24 @@ define_block_variants!(
 pub struct Block {
     x: u8,
     y: i8,
-    variant: Gem,
+    gem: Gem,
 }
 
 impl Block {
-    pub const fn new(x: u8, y: i8, variant: Gem) -> Self {
-        Self { x, y, variant }
+    pub const fn new(x: u8, y: i8, gem: Gem) -> Self {
+        Self { x, y, gem }
     }
 }
 
-impl Widget for &crate::blocks::Block {
+impl Widget for &Block {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if self.y < 0 {
-            return;
-        }
-
         let x = area.x + u16::from(self.x) * 2;
-        #[allow(clippy::cast_sign_loss)]
-        let y = area.y + self.y as u16;
-        let style = Style::from(self.variant);
+        let Some(y) = area.y.checked_add_signed(i16::from(self.y)) else {
+            return;
+        };
 
-        // TODO handle terminal window resizing
+        let style = Style::from(self.gem);
+
         if let Some(cell) = buf.cell_mut((x, y)) {
             cell.set_symbol(" ").set_style(style);
             if let Some(cell) = buf.cell_mut((x + 1, y)) {

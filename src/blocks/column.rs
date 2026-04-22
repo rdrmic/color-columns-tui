@@ -6,23 +6,34 @@ pub struct Column {
     x: u8,
     y: i8,
     gems: [Gem; 3],
+    is_falling: bool,
 }
 
 impl Column {
     pub fn new(x: u8, y: i8, rng: &mut fastrand::Rng) -> Self {
-        Self { x, y, gems: [Gem::random(rng), Gem::random(rng), Gem::random(rng)] }
+        Self { x, y, gems: [Gem::random(rng), Gem::random(rng), Gem::random(rng)], is_falling: false }
     }
 
-    pub const fn view_gems(&self) -> [(u8, i8, Gem); 3] {
+    pub const fn set_falling(&mut self, x: u8) {
+        self.x = x;
+        self.y = -3;
+        self.is_falling = true;
+    }
+
+    pub const fn gems(&self) -> [(u8, i8, Gem); 3] {
         [(self.x, self.y, self.gems[0]), (self.x, self.y + 1, self.gems[1]), (self.x, self.y + 2, self.gems[2])]
     }
 
-    pub const fn x(&self) -> u8 {
-        self.x
+    pub const fn next_y_positions(&self) -> [i8; 3] {
+        [self.y + 1, self.y + 2, self.y + 3]
     }
 
     pub const fn y_bottom(&self) -> i8 {
         self.y + 2
+    }
+
+    pub const fn x(&self) -> u8 {
+        self.x
     }
 
     pub const fn move_down(&mut self, distance: i8) {
@@ -48,9 +59,11 @@ impl Column {
 
 impl Widget for &Column {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        for (i, gem) in self.gems.iter().enumerate() {
-            let block = Block::new(self.x, self.y + i as i8, *gem);
-            block.render(area, buf);
+        for (x, y, gem) in self.gems() {
+            if self.is_falling && y < 0 {
+                continue;
+            }
+            Block::new(x, y, gem).render(area, buf);
         }
     }
 }
