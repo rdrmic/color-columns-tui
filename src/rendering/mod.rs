@@ -1,5 +1,6 @@
 mod gameover_ui;
 mod gameplay_ui;
+mod paused_ui;
 mod ready_ui;
 
 use ratatui::{
@@ -10,7 +11,14 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::{game::Game, stage_handlers::Stage};
+#[cfg(feature = "dev-console")]
+use crate::logging;
+
+use crate::{
+    blocks::{self, Gem},
+    game::Game,
+    stage_handlers::Stage,
+};
 
 // TODO calculate terminal window minimum sizes dynamically?
 #[cfg(feature = "dev-console")]
@@ -23,6 +31,9 @@ pub const MIN_WINDOW_HEIGHT: u16 = 29;
 const BOARD_WIDTH: u16 = Game::BOARD_WIDTH as u16 * 2 + 2;
 const BOARD_HEIGHT: u16 = Game::BOARD_HEIGHT as u16 + 2;
 
+// ============================================================================
+// Entry point for rendering
+// ============================================================================
 pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
     let frame_area = frame.area();
 
@@ -32,11 +43,25 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
     }
 
     let layout_areas = get_layout_areas(frame_area);
+
+    render_shared_areas(frame, &layout_areas, game, stage);
+
+    let footer_area = layout_areas.footer;
     match stage {
-        Stage::Ready(_) => ready_ui::render(frame, game, &layout_areas),
-        Stage::Gameplay(_) => gameplay_ui::render(frame, game, &layout_areas),
-        Stage::GameOver(_) => gameover_ui::render(frame, game, &layout_areas),
+        Stage::Ready(_) => ready_ui::render(frame, footer_area),
+        Stage::Gameplay(_) => gameplay_ui::render(frame, footer_area),
+        Stage::Paused(_) => paused_ui::render(frame, footer_area),
+        Stage::GameOver(_) => gameover_ui::render(frame, footer_area),
     }
+}
+
+fn render_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: &Stage) {
+    draw_next_column(frame, layout_areas.next_column, game, stage);
+    draw_board(frame, layout_areas.board, game, stage);
+    draw_stats(frame, layout_areas.stats, game);
+
+    #[cfg(feature = "dev-console")]
+    logging::dev_console::draw(frame, layout_areas.dev_console);
 }
 
 // ============================================================================
@@ -115,14 +140,20 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 // ============================================================================
 // Game: left side (next column and stats) and board
 // ============================================================================
-// fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game) {
-//     frame.render_widget(game.get_next_column(), area);
-// }
-
-fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game) {
+fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
     let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
 
-    frame.render_widget(game.get_next_column(), right_aligned_area);
+    if let Stage::Paused(pause_handler) = stage {
+        // Ne column with random colors
+        let flicker_tick = pause_handler.flicker_tick();
+        for (x, y, _) in game.get_next_column().gems() {
+            let seed = seed_for_randomizing_column_blocks(flicker_tick, x, y);
+            let flickered_gem = Gem::random_for_pause(seed);
+            frame.render_widget(&blocks::Block::new(0, y, flickered_gem), right_aligned_area);
+        }
+    } else {
+        frame.render_widget(game.get_next_column(), right_aligned_area);
+    }
 }
 
 fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
@@ -142,7 +173,7 @@ fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
     frame.render_widget(stats, area);
 }
 
-fn draw_board(frame: &mut Frame, area: Rect, game: &Game) {
+fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
     let board_vertical_layout =
         Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(4), Constraint::Max(BOARD_HEIGHT)]).split(area);
     let target_area = board_vertical_layout[1];
@@ -151,8 +182,35 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game) {
 
     let board_inner_area = Rect { x: target_area.x + 1, y: target_area.y + 1, width: target_area.width - 2, height: target_area.height - 2 };
 
-    frame.render_widget(game.get_falling_column(), board_inner_area);
-    frame.render_widget(game.get_pile(), board_inner_area);
+    if let Stage::Paused(pause_handler) = stage {
+        let flicker_tick = pause_handler.flicker_tick();
+
+        // Falling column with random colors
+        if let Some(column) = game.get_falling_column() {
+            for (x, y, _) in column.gems() {
+                if y >= 0 {
+                    let seed = seed_for_randomizing_column_blocks(flicker_tick, x, y);
+                    let flickered_gem = Gem::random_for_pause(seed);
+                    frame.render_widget(&blocks::Block::new(x, y, flickered_gem), board_inner_area);
+                }
+            }
+        }
+
+        // Pile with random colors
+        for y in 0..Game::BOARD_HEIGHT {
+            let y_as_i8 = i8::try_from(y).expect("Every y position in the pile should fit in `i8`");
+            for x in 0..Game::BOARD_WIDTH {
+                if game.get_pile().get(x, y).is_some() {
+                    let seed = seed_for_randomizing_pile_blocks(flicker_tick, x, y);
+                    let flickered_gem = Gem::random_for_pause(seed);
+                    frame.render_widget(&blocks::Block::new(x, y_as_i8, flickered_gem), board_inner_area);
+                }
+            }
+        }
+    } else {
+        frame.render_widget(game.get_falling_column(), board_inner_area);
+        frame.render_widget(game.get_pile(), board_inner_area);
+    }
 }
 
 #[rustfmt::skip]
@@ -184,6 +242,31 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
             }
         }
     }
+}
+
+// ============================================================================
+// Seed generators for randomizing Gem colors
+// ============================================================================
+/// Generates a unique seed for a Pile block by bit-packing coordinates and timing.
+///
+/// Bit-packing Map (64-bit):
+/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
+///
+/// This isolates spatial and temporal variables into distinct slots, ensuring
+/// the hash mixer receives a unique, stable identity for every cell on the board.
+fn seed_for_randomizing_column_blocks(flicker_tick: u64, x: u8, y: i8) -> u64 {
+    (flicker_tick << 32) | (u64::from(y.unsigned_abs()) << 16) | u64::from(x)
+}
+
+/// Generates a unique seed for a Column block by bit-packing coordinates and timing.
+///
+/// Bit-packing Map (64-bit):
+/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
+///
+/// Identical to Pile packing, but utilizes `unsigned_abs()` to normalize the
+/// coordinate, as falling blocks can exist at negative offsets above the board.
+fn seed_for_randomizing_pile_blocks(flicker_tick: u64, x: u8, y: u8) -> u64 {
+    (flicker_tick << 32) | (u64::from(y) << 16) | u64::from(x)
 }
 
 // ============================================================================

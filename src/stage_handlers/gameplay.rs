@@ -4,10 +4,9 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game::Game,
-    stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, Stage, StageHandler},
+    stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, PausedHandler, Stage, StageHandler},
 };
 
-#[derive(Debug)]
 pub struct GameplayHandler {
     last_tick: Instant, // tracks the last time the block moved down (gravity)
 }
@@ -44,6 +43,7 @@ impl StageHandler for GameplayHandler {
                     return Some(gameover_stage);
                 }
             }
+            KeyCode::Esc => return Some(Stage::Paused(PausedHandler::new())),
             _ => (),
         }
         None

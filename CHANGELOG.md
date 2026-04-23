@@ -72,9 +72,9 @@
 
 - Delegated state pattern: stages with handlers and separate renders
 - Keys legend at the bottom
-- "Ready" stage
-- "Gameplay" stage
-- "Game Over" stage
+- `Ready` stage
+- `Gameplay` stage
+- `Game Over` stage
 
 // 629K (643.128)
 
@@ -95,3 +95,10 @@
 - Pile up columns until the `Gameover` stage
 
 // 627K (641.376)
+
+### 0.0.11 / 2026-04-23
+
+- `Paused` stage with "flickering" Gems
+- Extract rendering of shared areas into the `handlers/mod.rs`
+
+// 628K (642.728)

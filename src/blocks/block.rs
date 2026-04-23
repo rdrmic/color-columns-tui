@@ -32,6 +32,24 @@ macro_rules! define_block_variants {
             pub fn random(rng: &mut fastrand::Rng) -> Self {
                 Self::ALL[rng.usize(..Self::COUNT)]
             }
+
+            pub fn random_for_pause(seed: u64) -> Self {
+                // MurmurHash3 64-bit mixer (fmix64).
+                //
+                // Acts as a deterministic scrambler that shatters the bit-packed seed.
+                // It utilizes the "Avalanche Effect" to ensure that minor shifts in position
+                // or time result in major shifts in color, disrupting the geometric
+                // patterns (like vertical stripes) that naturally emerge when mapping
+                // linear coordinates onto a small set of Gem variants.
+                let mut hash = seed;
+                hash ^= hash >> 33;
+                hash = hash.wrapping_mul(0xf_f51_afd_7ed_558_ccd);
+                hash ^= hash >> 33;
+                hash = hash.wrapping_mul(0xc_4ceb_9fe_1a8_5ec_53);
+                hash ^= hash >> 33;
+
+                Self::ALL[(hash as usize) % Self::COUNT]
+            }
         }
 
         impl From<Gem> for Style {

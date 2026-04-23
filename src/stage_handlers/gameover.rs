@@ -8,7 +8,6 @@ use crate::{
     stage_handlers::{FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
 };
 
-#[derive(Debug)]
 pub struct GameOverHandler {
     is_stage_initialized: bool,
 }

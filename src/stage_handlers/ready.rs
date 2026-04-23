@@ -8,7 +8,6 @@ use crate::{
     stage_handlers::{FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
 };
 
-#[derive(Debug)]
 pub struct ReadyHandler;
 
 impl StageHandler for ReadyHandler {

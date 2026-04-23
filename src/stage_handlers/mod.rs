@@ -6,20 +6,22 @@ use crate::game::Game;
 
 mod gameover;
 mod gameplay;
+mod paused;
 mod ready;
 
 pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;
+pub use paused::PausedHandler;
 pub use ready::ReadyHandler;
 
 const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
 const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
+const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
 
-#[derive(Debug)]
 pub enum Stage {
     Ready(ReadyHandler),
     Gameplay(GameplayHandler),
-    //Paused(PausedHandler),
+    Paused(PausedHandler),
     //Help(HelpHandler),
     GameOver(GameOverHandler),
 }
@@ -35,6 +37,7 @@ impl StageHandler for Stage {
         match self {
             Self::Ready(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::Gameplay(handler) => handler.handle_key_pressed_event(game, key_event),
+            Self::Paused(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::GameOver(handler) => handler.handle_key_pressed_event(game, key_event),
         }
     }
@@ -43,6 +46,7 @@ impl StageHandler for Stage {
         match self {
             Self::Ready(handler) => handler.time_before_next_tick(game),
             Self::Gameplay(handler) => handler.time_before_next_tick(game),
+            Self::Paused(handler) => handler.time_before_next_tick(game),
             Self::GameOver(handler) => handler.time_before_next_tick(game),
         }
     }
@@ -51,6 +55,7 @@ impl StageHandler for Stage {
         match self {
             Self::Ready(handler) => handler.update(game),
             Self::Gameplay(handler) => handler.update(game),
+            Self::Paused(handler) => handler.update(game),
             Self::GameOver(handler) => handler.update(game),
         }
     }
