@@ -1,8 +1,3 @@
-mod gameover_ui;
-mod gameplay_ui;
-mod paused_ui;
-mod ready_ui;
-
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -19,6 +14,12 @@ use crate::{
     game::Game,
     stage_handlers::Stage,
 };
+
+mod gameover_ui;
+mod gameplay_ui;
+mod instructions_ui;
+mod paused_ui;
+mod ready_ui;
 
 // TODO calculate terminal window minimum sizes dynamically?
 #[cfg(feature = "dev-console")]
@@ -44,24 +45,31 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
 
     let layout_areas = get_layout_areas(frame_area);
 
-    render_shared_areas(frame, &layout_areas, game, stage);
-
-    let footer_area = layout_areas.footer;
-    match stage {
-        Stage::Ready(_) => ready_ui::render(frame, footer_area),
-        Stage::Gameplay(_) => gameplay_ui::render(frame, footer_area),
-        Stage::Paused(_) => paused_ui::render(frame, footer_area),
-        Stage::GameOver(_) => gameover_ui::render(frame, footer_area),
+    if matches!(stage, Stage::Instructions(_)) {
+        instructions_ui::draw_instructions(frame, layout_areas.instructions);
+    } else {
+        draw_shared_areas(frame, &layout_areas, game, stage);
     }
-}
-
-fn render_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: &Stage) {
-    draw_next_column(frame, layout_areas.next_column, game, stage);
-    draw_board(frame, layout_areas.board, game, stage);
-    draw_stats(frame, layout_areas.stats, game);
+    draw_footer(frame, layout_areas.footer, stage);
 
     #[cfg(feature = "dev-console")]
     logging::dev_console::draw(frame, layout_areas.dev_console);
+}
+
+fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: &Stage) {
+    draw_next_column(frame, layout_areas.next_column, game, stage);
+    draw_board(frame, layout_areas.board, game, stage);
+    draw_stats(frame, layout_areas.stats, game);
+}
+
+fn draw_footer(frame: &mut Frame, area: Rect, stage: &Stage) {
+    match stage {
+        Stage::Ready(_) => ready_ui::draw_footer(frame, area),
+        Stage::Gameplay(_) => gameplay_ui::draw_footer(frame, area),
+        Stage::Paused(_) => paused_ui::draw_footer(frame, area),
+        Stage::Instructions(_) => instructions_ui::draw_footer(frame, area),
+        Stage::GameOver(_) => gameover_ui::draw_footer(frame, area),
+    }
 }
 
 // ============================================================================
@@ -97,6 +105,7 @@ struct LayoutAreas {
     next_column: Rect,
     stats: Rect,
     board: Rect,
+    instructions: Rect,
     footer: Rect,
     #[cfg(feature = "dev-console")]
     dev_console: Rect,
@@ -116,6 +125,9 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
     let game_area = game_vertical_layout[0];
     let footer_area = game_vertical_layout[2];
 
+    let instructions_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Min(0)]).split(game_area);
+    let instructions_area = instructions_layout[0];
+
     let game_horizontal_layout =
         Layout::default().direction(Direction::Horizontal).constraints([Constraint::Length(14), Constraint::Length(BOARD_WIDTH)]).split(game_area);
 
@@ -131,6 +143,7 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
         next_column: next_column_area,
         stats: stats_area,
         board: board_area,
+        instructions: instructions_area,
         footer: footer_area,
         #[cfg(feature = "dev-console")]
         dev_console: main_horizontal_layout[2],
@@ -245,31 +258,6 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 }
 
 // ============================================================================
-// Seed generators for randomizing Gem colors
-// ============================================================================
-/// Generates a unique seed for a Pile block by bit-packing coordinates and timing.
-///
-/// Bit-packing Map (64-bit):
-/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
-///
-/// This isolates spatial and temporal variables into distinct slots, ensuring
-/// the hash mixer receives a unique, stable identity for every cell on the board.
-fn seed_for_randomizing_column_blocks(flicker_tick: u64, x: u8, y: i8) -> u64 {
-    (flicker_tick << 32) | (u64::from(y.unsigned_abs()) << 16) | u64::from(x)
-}
-
-/// Generates a unique seed for a Column block by bit-packing coordinates and timing.
-///
-/// Bit-packing Map (64-bit):
-/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
-///
-/// Identical to Pile packing, but utilizes `unsigned_abs()` to normalize the
-/// coordinate, as falling blocks can exist at negative offsets above the board.
-fn seed_for_randomizing_pile_blocks(flicker_tick: u64, x: u8, y: u8) -> u64 {
-    (flicker_tick << 32) | (u64::from(y) << 16) | u64::from(x)
-}
-
-// ============================================================================
 // Keys legend
 // ============================================================================
 const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).add_modifier(Modifier::BOLD);
@@ -308,4 +296,29 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)
     let (keys, actions) = legend;
     frame.render_widget(Paragraph::new(keys.clone()), keys_area);
     frame.render_widget(Paragraph::new(actions.clone()), actions_area);
+}
+
+// ============================================================================
+// Seed generators for randomizing Gem colors
+// ============================================================================
+/// Generates a unique seed for a Pile block by bit-packing coordinates and timing.
+///
+/// Bit-packing Map (64-bit):
+/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
+///
+/// This isolates spatial and temporal variables into distinct slots, ensuring
+/// the hash mixer receives a unique, stable identity for every cell on the board.
+fn seed_for_randomizing_column_blocks(flicker_tick: u64, x: u8, y: i8) -> u64 {
+    (flicker_tick << 32) | (u64::from(y.unsigned_abs()) << 16) | u64::from(x)
+}
+
+/// Generates a unique seed for a Column block by bit-packing coordinates and timing.
+///
+/// Bit-packing Map (64-bit):
+/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
+///
+/// Identical to Pile packing, but utilizes `unsigned_abs()` to normalize the
+/// coordinate, as falling blocks can exist at negative offsets above the board.
+fn seed_for_randomizing_pile_blocks(flicker_tick: u64, x: u8, y: u8) -> u64 {
+    (flicker_tick << 32) | (u64::from(y) << 16) | u64::from(x)
 }

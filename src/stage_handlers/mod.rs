@@ -6,11 +6,13 @@ use crate::game::Game;
 
 mod gameover;
 mod gameplay;
+mod instructions;
 mod paused;
 mod ready;
 
 pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;
+pub use instructions::InstructionsHandler;
 pub use paused::PausedHandler;
 pub use ready::ReadyHandler;
 
@@ -22,7 +24,7 @@ pub enum Stage {
     Ready(ReadyHandler),
     Gameplay(GameplayHandler),
     Paused(PausedHandler),
-    //Help(HelpHandler),
+    Instructions(InstructionsHandler),
     GameOver(GameOverHandler),
 }
 
@@ -38,6 +40,7 @@ impl StageHandler for Stage {
             Self::Ready(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::Gameplay(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::Paused(handler) => handler.handle_key_pressed_event(game, key_event),
+            Self::Instructions(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::GameOver(handler) => handler.handle_key_pressed_event(game, key_event),
         }
     }
@@ -47,6 +50,7 @@ impl StageHandler for Stage {
             Self::Ready(handler) => handler.time_before_next_tick(game),
             Self::Gameplay(handler) => handler.time_before_next_tick(game),
             Self::Paused(handler) => handler.time_before_next_tick(game),
+            Self::Instructions(handler) => handler.time_before_next_tick(game),
             Self::GameOver(handler) => handler.time_before_next_tick(game),
         }
     }
@@ -56,6 +60,7 @@ impl StageHandler for Stage {
             Self::Ready(handler) => handler.update(game),
             Self::Gameplay(handler) => handler.update(game),
             Self::Paused(handler) => handler.update(game),
+            Self::Instructions(handler) => handler.update(game),
             Self::GameOver(handler) => handler.update(game),
         }
     }

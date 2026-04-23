@@ -29,32 +29,21 @@ static DEV_CONSOLE: LazyLock<Mutex<DevConsoleState>> = LazyLock::new(|| {
     Mutex::new(DevConsoleState { lines: VecDeque::with_capacity(MAX_CONSOLE_LOG_LINES), auto_scroll: true, scroll_offset: 0, last_known_inner_height: 0 })
 });
 
-pub fn handle_key_pressed_event(key_event: &KeyEvent) -> bool {
+pub fn handle_key_pressed_event(key_event: &KeyEvent) {
     let mut console = acquire_console_mutex();
     match key_event.code {
-        KeyCode::PageUp => {
-            handle_scrolling_up(&mut console);
-            true
-        }
-        KeyCode::PageDown => {
-            handle_scrolling_down(&mut console);
-            true
-        }
+        KeyCode::PageUp => handle_scrolling_up(&mut console),
+        KeyCode::PageDown => handle_scrolling_down(&mut console),
         KeyCode::Home => {
             console.auto_scroll = false;
             console.scroll_offset = 0;
-            true
         }
-        KeyCode::End => {
-            console.auto_scroll = true;
-            true
-        }
+        KeyCode::End => console.auto_scroll = true,
         _ => {
             let max_scroll_possible = calculate_max_scroll_possible(&console);
             if console.scroll_offset >= max_scroll_possible {
                 console.auto_scroll = true;
             }
-            false
         }
     }
 }
@@ -72,7 +61,7 @@ pub fn draw(frame: &mut Frame, area: Rect) {
     let paragraph = {
         let mut console = acquire_console_mutex();
 
-        // Process any logs queued by macros before drawing
+        // process any logs queued by macros before drawing
         flush_messages_as_lines(&mut console);
 
         let block = Block::bordered()
@@ -80,7 +69,7 @@ pub fn draw(frame: &mut Frame, area: Rect) {
             .style(Style::default().fg(Color::Indexed(40)))
             .padding(Padding::horizontal(1));
 
-        // Save this for the input handler to use later
+        // save this for the input handler to use later
         console.last_known_inner_height = block.inner(area).height;
 
         let max_scroll_possible = calculate_max_scroll_possible(&console);

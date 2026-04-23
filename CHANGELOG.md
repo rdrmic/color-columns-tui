@@ -99,6 +99,13 @@
 ### 0.0.11 / 2026-04-23
 
 - `Paused` stage with "flickering" Gems
-- Extract rendering of shared areas into the `handlers/mod.rs`
+- Extract rendering of shared areas into the `stage_handlers/mod.rs`
 
 // 628K (642.728)
+
+### 0.0.12 / 2026-04-23
+
+- `Instructions` stage
+- Further refactoring of `rendering/mod.rs` and sub-modules
+
+// 630K (644.272)

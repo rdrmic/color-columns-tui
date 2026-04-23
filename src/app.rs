@@ -10,9 +10,9 @@ use ratatui::{
 #[cfg(feature = "dev-console")]
 use crate::logging;
 
-use crate::rendering;
 use crate::stage_handlers::{Stage, StageHandler};
 use crate::{game::Game, stage_handlers::ReadyHandler};
+use crate::{rendering, stage_handlers::InstructionsHandler};
 
 pub struct App {
     is_running: bool,
@@ -76,22 +76,34 @@ impl App {
 
     fn handle_key_pressed_event(&mut self, key_event: &KeyEvent) {
         // Global keys
+        let is_pressed = match key_event.code {
+            KeyCode::Char('q' | 'Q') => {
+                self.is_running = false;
+                true
+            }
+            KeyCode::F(1) => {
+                self.stage = Stage::Instructions(InstructionsHandler);
+                true
+            }
+            _ => false,
+        };
+        if is_pressed {
+            return;
+        }
+
         if let KeyCode::Char('q' | 'Q') = key_event.code {
             self.is_running = false;
             return;
         }
 
-        // "dev-console" keys
-        #[cfg(feature = "dev-console")]
-        {
-            if logging::dev_console::handle_key_pressed_event(key_event) {
-                return;
-            }
-        }
-
         // Stages keys
         if let Some(next_stage) = self.stage.handle_key_pressed_event(&mut self.game, *key_event) {
             self.stage = next_stage;
+            return;
         }
+
+        // "dev-console" keys
+        #[cfg(feature = "dev-console")]
+        logging::dev_console::handle_key_pressed_event(key_event);
     }
 }
