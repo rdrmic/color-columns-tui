@@ -1,4 +1,3 @@
-use anyhow::Context;
 use ratatui::{
     DefaultTerminal,
     crossterm::{
@@ -10,9 +9,12 @@ use ratatui::{
 #[cfg(feature = "dev-console")]
 use crate::logging;
 
-use crate::stage_handlers::{Stage, StageHandler};
-use crate::{game::Game, stage_handlers::ReadyHandler};
-use crate::{rendering, stage_handlers::InstructionsHandler};
+use crate::{
+    errors::{self, Context},
+    game::Game,
+    rendering,
+    stage_handlers::{InstructionsHandler, ReadyHandler, Stage, StageHandler},
+};
 
 pub struct App {
     is_running: bool,
@@ -21,11 +23,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> Result<Self, errors::Error> {
         Ok(Self { is_running: true, stage: Stage::Ready(ReadyHandler), game: Game::new()? })
     }
 
-    pub fn run(mut self, mut terminal: DefaultTerminal) -> anyhow::Result<()> {
+    pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), errors::Error> {
         log::info!("Main loop is starting...");
 
         while self.is_running {

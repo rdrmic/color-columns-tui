@@ -1,4 +1,4 @@
-pub mod file;
+pub mod file_logger;
 
 #[cfg(feature = "dev-console")]
 pub mod dev_console;

@@ -1,8 +1,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Ok};
-
-use crate::blocks::{Column, Pile};
+use crate::{
+    blocks::{Column, Pile},
+    errors::{self, Context},
+};
 
 pub struct Game {
     column_next: Column,
@@ -26,7 +27,7 @@ impl Game {
 
     const FALLING_COLUMN_NOT_INITIALIZED_ERROR: &str = "Falling column must be initialized";
 
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> Result<Self, errors::Error> {
         let mut rng = create_rng()?;
 
         Ok(Self {
@@ -40,7 +41,7 @@ impl Game {
         })
     }
 
-    pub fn start(&mut self) -> anyhow::Result<()> {
+    pub fn start(&mut self) -> Result<(), errors::Error> {
         self.pile.clear();
         self.score = 0;
         self.current_tick_duration = Self::INITIAL_TICK_DURATION;
@@ -166,7 +167,7 @@ impl Game {
     }
 }
 
-fn create_rng() -> anyhow::Result<fastrand::Rng> {
+fn create_rng() -> Result<fastrand::Rng, errors::Error> {
     let now = SystemTime::now();
     let seed = now
         .duration_since(UNIX_EPOCH)

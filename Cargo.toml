@@ -3,14 +3,11 @@ edition = "2024"
 authors = ["rdrmic@gmail.com"]
 name = "color-columns-tui"
 description = "Color Columns"
-version = "0.0.12"
+version = "0.0.13"
 
 [dependencies]
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
-log = { version = "0.4.29", default-features = false }
-env_logger = { version = "0.11.10", default-features = false, features = ["color"] }
-anyhow = { version = "1.0.102", default-features = false, features = ["std"] }
-time = { version = "0.3.47", default-features = false, features = ["formatting", "macros"] }
+log = { version = "0.4.29", default-features = false, features = ["release_max_level_warn"] }
 fastrand = { version = "2.4.1", default-features = false }
 
 [features]
@@ -45,7 +42,7 @@ multiple_crate_versions = "allow" # FIXME multiple versions for `strum_macros`: 
 
 [profile.release]
 opt-level = "z"
-lto = true
+lto = "fat"
 codegen-units = 1
 strip = true
 panic = "abort"

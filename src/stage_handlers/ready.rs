@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use anyhow::Context;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
+    errors::Context,
     game::Game,
     stage_handlers::{FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
 };
