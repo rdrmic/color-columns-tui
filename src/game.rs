@@ -1,15 +1,16 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::{
-    blocks::{Column, Pile},
+    blocks::{Column, MatchingStructure, Pile, all_directions_match_counts},
     errors::{self, Context},
+    score::Scoring,
 };
 
 pub struct Game {
     column_next: Column,
     column_falling: Option<Column>,
     pile: Pile,
-    score: u16, // TODO Max of 65,535 is enough? (depends on ACCELERATION_SCORE_POINTS and maybe on ACCELERATION_FACTOR)
+    scoring: Scoring,
     current_tick_duration: Duration,
     pub is_column_locked: bool,
     rng: fastrand::Rng,
@@ -34,7 +35,7 @@ impl Game {
             column_next: Self::create_column(&mut rng),
             column_falling: None,
             pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
-            score: 0,
+            scoring: Scoring::new(),
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             is_column_locked: false,
             rng,
@@ -43,7 +44,7 @@ impl Game {
 
     pub fn start(&mut self) -> Result<(), errors::Error> {
         self.pile.clear();
-        self.score = 0;
+        self.scoring = Scoring::new();
         self.current_tick_duration = Self::INITIAL_TICK_DURATION;
         self.is_column_locked = false;
         self.transition_next_column_to_falling();
@@ -62,15 +63,41 @@ impl Game {
 
         let x = column_falling.x();
 
-        let is_column_descended_one_step = if self.pile.will_next_position_fit(x, column_falling) {
+        if self.pile.will_next_position_fit(x, column_falling) {
             column_falling.move_down(1);
-            true
+            self.scoring.break_cascade_sequence();
         } else {
-            false
-        };
-
-        if !is_column_descended_one_step || !self.pile.will_next_position_fit(x, column_falling) {
             self.pile.lock(column_falling);
+
+            let mut match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
+            if match_counts > 0 {
+                crate::dev_gray!("LOCK");
+
+                let points = all_directions_match_counts(match_counts);
+                crate::dev_red!("{points:?}");
+                self.scoring.add(points);
+
+                self.pile.clear_matches();
+                self.pile.apply_gravity();
+
+                while {
+                    match_counts = self.pile.find_matches(&MatchingStructure::Pile);
+                    match_counts > 0
+                } {
+                    let points = all_directions_match_counts(match_counts);
+                    crate::dev_red!("    {points:?}");
+                    self.scoring.add(points);
+
+                    self.pile.clear_matches();
+                    self.pile.apply_gravity();
+                }
+
+                crate::dev_gray!("==============================");
+                crate::dev_gray!("");
+            }
+
+            // TODO
+            //self.score += matched_gems; // Or use a multiplier for bigger chains
 
             if self.pile.is_overflowed() {
                 self.pile.lock_final_gem();
@@ -81,12 +108,17 @@ impl Game {
             self.transition_next_column_to_falling();
         }
 
-        if self.score > 0 && self.score.is_multiple_of(Self::ACCELERATION_SCORE_POINTS) {
+        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
             self.accelerate(Self::ACCELERATION_FACTOR);
         }
 
         true
     }
+
+    // TODO
+    // fn process_matched_gems(&mut self, matching_structure: &MatchingStructure) {
+    //     //
+    // }
 
     pub fn move_left(&mut self) {
         let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
@@ -146,6 +178,18 @@ impl Game {
     pub const fn tick_rate(&self) -> Duration {
         if self.is_column_locked { Duration::ZERO } else { self.current_tick_duration }
         //self.current_tick_duration
+    }
+
+    pub const fn score(&self) -> u32 {
+        self.scoring.score()
+    }
+
+    pub const fn max_combo(&self) -> u16 {
+        self.scoring.max_combo()
+    }
+
+    pub const fn highscore(&self) -> u32 {
+        self.scoring.highscore()
     }
 
     fn create_column(rng: &mut fastrand::Rng) -> Column {

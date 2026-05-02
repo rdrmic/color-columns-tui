@@ -1,14 +1,14 @@
-use std::time::Duration;
-
-use ratatui::crossterm::event::KeyEvent;
-
-use crate::game::Game;
-
 mod gameover;
 mod gameplay;
 mod instructions;
 mod paused;
 mod ready;
+
+use std::time::Duration;
+
+use ratatui::crossterm::event::KeyEvent;
+
+use crate::game::Game;
 
 pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;

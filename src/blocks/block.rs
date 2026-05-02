@@ -20,7 +20,7 @@ const STYLE_AMETHYST: Style = Style::new().bg(Color::Magenta);
 
 macro_rules! define_block_variants {
     ($($gem:ident => $style:ident),*) => {
-        #[derive(Clone, Copy, PartialEq, Eq)]
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
         pub enum Gem {
             $($gem),*
         }
@@ -86,6 +86,9 @@ impl Block {
     }
 }
 
+// ============================================================================
+// Rendering Widget
+// ============================================================================
 impl Widget for &Block {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let x = area.x + u16::from(self.x) * 2;

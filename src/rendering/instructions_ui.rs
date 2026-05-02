@@ -27,15 +27,15 @@ pub(super) fn draw_instructions(frame: &mut Frame, area: Rect) {
 
         ✨ The more blocks matched in a line, the more points you earn.
 
-        🎯 Cross-directional matches earn big bonuses.
+        🎯 Multiple matches multiply gained points.
 
-        🚀 Points are multiplied by the number of sequential, cascading matches.
+        🚀 Sequential, cascading matches earn huge bonuses.
 
         --
         ⚙  Created by Rade Drmic
         📬 rdrmic@gmail.com
     ";
 
-    let instructions = Paragraph::new(instructions).block(Block::default().padding(Padding::left(1))).wrap(Wrap { trim: true });
+    let instructions = Paragraph::new(instructions).block(Block::default().padding(Padding::new(1, 1, 1, 0))).wrap(Wrap { trim: true });
     frame.render_widget(instructions, area);
 }

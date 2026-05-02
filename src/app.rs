@@ -13,7 +13,7 @@ use crate::{
     errors::{self, Context},
     game::Game,
     rendering,
-    stage_handlers::{InstructionsHandler, ReadyHandler, Stage, StageHandler},
+    stage_handlers::{ReadyHandler, Stage, StageHandler},
 };
 
 pub struct App {
@@ -78,21 +78,6 @@ impl App {
 
     fn handle_key_pressed_event(&mut self, key_event: &KeyEvent) {
         // Global keys
-        let is_pressed = match key_event.code {
-            KeyCode::Char('q' | 'Q') => {
-                self.is_running = false;
-                true
-            }
-            KeyCode::F(1) => {
-                self.stage = Stage::Instructions(InstructionsHandler);
-                true
-            }
-            _ => false,
-        };
-        if is_pressed {
-            return;
-        }
-
         if let KeyCode::Char('q' | 'Q') = key_event.code {
             self.is_running = false;
             return;

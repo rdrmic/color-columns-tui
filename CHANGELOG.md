@@ -1,3 +1,13 @@
+### 0.0.14 / 2026-05-02
+
+- Find and clear the matches
+- Add scoring calculations
+- Fix randomizing Gems in `Paused` stage
+- Move listening to `F1` key to `ReadyHandler` only
+- Adjust instructions text and improve layout
+
+// 521K (533.352)
+
 ### 0.0.13 / 2026-04-28
 
 - Binary size optimization

@@ -1,3 +1,9 @@
+mod gameover_ui;
+mod gameplay_ui;
+mod instructions_ui;
+mod paused_ui;
+mod ready_ui;
+
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -15,13 +21,7 @@ use crate::{
     stage_handlers::Stage,
 };
 
-mod gameover_ui;
-mod gameplay_ui;
-mod instructions_ui;
-mod paused_ui;
-mod ready_ui;
-
-// TODO calculate terminal window minimum sizes dynamically?
+// TODO calculate terminal window minimum sizes from other constants
 #[cfg(feature = "dev-console")]
 pub const MIN_WINDOW_WIDTH: u16 = 160;
 #[cfg(not(feature = "dev-console"))]
@@ -157,10 +157,10 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
     let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
 
     if let Stage::Paused(pause_handler) = stage {
-        // Ne column with random colors
+        // Next column with random colors
         let flicker_tick = pause_handler.flicker_tick();
         for (x, y, _) in game.get_next_column().gems() {
-            let seed = seed_for_randomizing_column_blocks(flicker_tick, x, y);
+            let seed = seed_for_randomizing_next_column_blocks(flicker_tick, x, y);
             let flickered_gem = Gem::random_for_pause(seed);
             frame.render_widget(&blocks::Block::new(0, y, flickered_gem), right_aligned_area);
         }
@@ -169,17 +169,18 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
     }
 }
 
-fn draw_stats(frame: &mut Frame, area: Rect, _game: &Game) {
+fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
+    // TODO
     let stats_text = vec![
         Line::from(""),
         Line::from(vec!["SCORE".into()]).style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        Line::from("329").style(Style::default().fg(Color::Gray)),
+        Line::from(game.score().to_string()).style(Style::default().fg(Color::Gray)),
         Line::from(""),
         Line::from(vec!["MAX COMBO".into()]).style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
-        Line::from("63").style(Style::default().fg(Color::Gray)),
+        Line::from(game.max_combo().to_string()).style(Style::default().fg(Color::Gray)),
         Line::from(""),
         Line::from(vec!["HIGHSCORE".into()]).style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-        Line::from("3495").style(Style::default().fg(Color::Gray)),
+        Line::from(game.highscore().to_string()).style(Style::default().fg(Color::Gray)),
     ];
 
     let stats = Paragraph::new(stats_text).block(Block::default().padding(ratatui::widgets::Padding::horizontal(2)));
@@ -202,7 +203,7 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
         if let Some(column) = game.get_falling_column() {
             for (x, y, _) in column.gems() {
                 if y >= 0 {
-                    let seed = seed_for_randomizing_column_blocks(flicker_tick, x, y);
+                    let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, x, y);
                     let flickered_gem = Gem::random_for_pause(seed);
                     frame.render_widget(&blocks::Block::new(x, y, flickered_gem), board_inner_area);
                 }
@@ -301,24 +302,22 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)
 // ============================================================================
 // Seed generators for randomizing Gem colors
 // ============================================================================
-/// Generates a unique seed for a Pile block by bit-packing coordinates and timing.
-///
-/// Bit-packing Map (64-bit):
-/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
-///
-/// This isolates spatial and temporal variables into distinct slots, ensuring
-/// the hash mixer receives a unique, stable identity for every cell on the board.
-fn seed_for_randomizing_column_blocks(flicker_tick: u64, x: u8, y: i8) -> u64 {
-    (flicker_tick << 32) | (u64::from(y.unsigned_abs()) << 16) | u64::from(x)
+fn seed_for_randomizing_next_column_blocks(tick: u64, x: u8, y: i8) -> u64 {
+    generate_seed(1, tick, u64::from(y.unsigned_abs()), u64::from(x))
 }
 
-/// Generates a unique seed for a Column block by bit-packing coordinates and timing.
+fn seed_for_randomizing_falling_column_blocks(tick: u64, x: u8, y: i8) -> u64 {
+    generate_seed(2, tick, u64::from(y.unsigned_abs()), u64::from(x))
+}
+
+fn seed_for_randomizing_pile_blocks(tick: u64, x: u8, y: u8) -> u64 {
+    generate_seed(3, tick, u64::from(y), u64::from(x))
+}
+
+/// Generates a unique randomizing seed by bit-packing type (flag), timing (tick) and coordinates (x and y).
 ///
-/// Bit-packing Map (64-bit):
-/// [ Tick (32 bits) ] [ Y-Coord (16 bits) ] [ X-Coord (16 bits) ]
-///
-/// Identical to Pile packing, but utilizes `unsigned_abs()` to normalize the
-/// coordinate, as falling blocks can exist at negative offsets above the board.
-fn seed_for_randomizing_pile_blocks(flicker_tick: u64, x: u8, y: u8) -> u64 {
-    (flicker_tick << 32) | (u64::from(y) << 16) | u64::from(x)
+/// bits:   | 63 ........ 48 | 47 .... 32 | 31 .... 16 | 15 .... 0 |
+/// chunks: | type           | tick       | y          | x         |
+const fn generate_seed(flag: u64, tick: u64, y: u64, x: u64) -> u64 {
+    (flag << 48) | (tick << 32) | (y << 16) | x
 }

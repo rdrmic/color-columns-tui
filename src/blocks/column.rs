@@ -2,6 +2,7 @@ use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 use crate::blocks::{Block, Gem};
 
+#[derive(Debug)]
 pub struct Column {
     x: u8,
     y: i8,
@@ -57,6 +58,9 @@ impl Column {
     }
 }
 
+// ============================================================================
+// Rendering Widget
+// ============================================================================
 impl Widget for &Column {
     fn render(self, area: Rect, buf: &mut Buffer) {
         for (x, y, gem) in self.gems() {

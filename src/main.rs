@@ -4,6 +4,7 @@ mod errors;
 mod game;
 mod logging;
 mod rendering;
+mod score;
 mod stage_handlers;
 
 use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
