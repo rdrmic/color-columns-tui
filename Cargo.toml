@@ -3,7 +3,7 @@ edition = "2024"
 authors = ["rdrmic@gmail.com"]
 name = "color-columns-tui"
 description = "Color Columns"
-version = "0.0.15"
+version = "0.1.0"
 
 [dependencies]
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
@@ -11,7 +11,7 @@ log = { version = "0.4.29", default-features = false, features = ["release_max_l
 fastrand = { version = "2.4.1", default-features = false }
 
 [features]
-default = ["dev-console"]
+#default = ["dev-console"]
 dev-console = []
 
 [lints.rust]
@@ -37,8 +37,8 @@ missing_errors_doc = "allow"
 cast_possible_truncation = "allow"
 too_many_lines = "allow"
 # --- The `cargo` group silencing ---
-cargo_common_metadata = "allow" # allow if publishing is not a concern
-multiple_crate_versions = "allow" # FIXME multiple versions for `strum_macros`: 0.26.4 & 0.27.2
+cargo_common_metadata = "allow"
+multiple_crate_versions = "allow"
 
 [profile.release]
 opt-level = "z"

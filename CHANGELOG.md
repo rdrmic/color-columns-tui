@@ -1,8 +1,16 @@
+### 0.1.0 / 2026-05-06    --> Fully playable game
+
+- Persist and read high score from file
+- Use common application state directory (for log and high score files)
+- Improve/optimize and refactor
+
+// 525K (536.872)
+
 ### 0.0.15 / 2026-05-06
 
-- Add clearing matches and "gravity" effect visually sequential
+- Make clearing matches and "gravity" effect visually sequential
 
-// 520K (532.144)
+// 520K (532.128)
 
 ### 0.0.14 / 2026-05-02
 

@@ -107,8 +107,7 @@ impl Pile {
         self.matched_positions.clear();
     }
 
-    /// Shift Gems down
-    pub fn apply_gravity(&mut self) {
+    pub fn apply_hanging_blocks_gravity(&mut self) {
         for x in 0..self.width {
             let mut write_pos = self.height.saturating_sub(1);
             for read_pos in (0..self.height).rev() {

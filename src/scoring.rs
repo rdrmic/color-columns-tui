@@ -1,3 +1,10 @@
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+use crate::errors;
+
 pub struct Scoring {
     score: u32,
     max_combo: u16,
@@ -7,8 +14,19 @@ pub struct Scoring {
 }
 
 impl Scoring {
-    pub const fn new() -> Self {
-        Self { score: 0, max_combo: 0, highscore: 0, accumulated_points: 0, cascade_count: 0 }
+    const HIGHSCORE_FILE_NAME: &str = "hs";
+
+    #[rustfmt::skip]
+    pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
+        Ok(
+            Self {
+                score: 0,
+                max_combo: 0,
+                highscore: Self::read_highscore_from_file(app_state_dir_path)?,
+                accumulated_points: 0,
+                cascade_count: 0,
+            }
+        )
     }
 
     pub fn add(&mut self, points: [[u8; 4]; 4]) {
@@ -51,6 +69,32 @@ impl Scoring {
     pub const fn break_cascade_sequence(&mut self) {
         self.accumulated_points = 0;
         self.cascade_count = 0;
+    }
+
+    pub fn write_highscore_to_file(&self, app_state_dir_path: Option<&Path>) -> Result<(), errors::Error> {
+        let file_path = Self::get_highscore_filepath(app_state_dir_path)?;
+
+        let mut file = std::fs::File::create(file_path)?;
+        write!(file, "{}", self.highscore())?;
+        Ok(())
+    }
+
+    fn read_highscore_from_file(app_state_dir_path: Option<&Path>) -> Result<u32, errors::Error> {
+        let filepath = Self::get_highscore_filepath(app_state_dir_path)?;
+
+        let contents = match std::fs::read_to_string(&filepath) {
+            Ok(contents) => contents,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+            Err(err) => return Err(err.into()),
+        };
+
+        let highscore = contents.trim().parse::<u32>()?;
+        Ok(highscore)
+    }
+
+    fn get_highscore_filepath(app_state_dir_path: Option<&Path>) -> Result<PathBuf, errors::Error> {
+        let path = app_state_dir_path.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "App state directory path is missing"))?;
+        Ok(path.join(Self::HIGHSCORE_FILE_NAME))
     }
 
     const fn calculate_cascade_multiplier(&mut self) -> u16 {

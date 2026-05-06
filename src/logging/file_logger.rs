@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Mutex, PoisonError},
 };
 
@@ -30,29 +30,17 @@ impl log::Log for FileLogger {
     }
 }
 
-pub fn init_logger() -> Result<PathBuf, std::io::Error> {
-    let log_file_path = assemble_log_file_path()?;
+pub fn init_logger(app_state_dir_path: Option<&Path>) -> Result<Option<PathBuf>, std::io::Error> {
+    let Some(dir_path) = app_state_dir_path else {
+        return Ok(None);
+    };
+
+    let log_file_path = dir_path.join("last_run.log");
     let file = File::create(&log_file_path)?;
 
     let logger = Box::leak(Box::new(FileLogger { file: Mutex::new(file) }));
     log::set_logger(logger).map_err(|_| std::io::Error::other("Logger already set"))?;
     log::set_max_level(log::LevelFilter::Debug);
 
-    Ok(log_file_path)
-}
-
-fn assemble_log_file_path() -> Result<PathBuf, std::io::Error> {
-    let mut log_dir = std::env::var_os("XDG_STATE_HOME").map_or_else(
-        || {
-            let home = std::env::var_os("HOME").expect("HOME env var not set");
-            PathBuf::from(home).join(".local").join("state")
-        },
-        PathBuf::from,
-    );
-    log_dir.push(env!("CARGO_PKG_NAME"));
-
-    std::fs::create_dir_all(&log_dir).map_err(|_| std::io::Error::other("Failed to create log file directory"))?;
-
-    let log_file_path = log_dir.join("last_run.log");
-    Ok(log_file_path)
+    Ok(Some(log_file_path))
 }

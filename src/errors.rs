@@ -4,6 +4,7 @@ use std::borrow::Cow;
 pub enum Error {
     Io(std::io::Error),
     SystemTime(std::time::SystemTimeError),
+    ParseInt(std::num::ParseIntError),
     Context(Cow<'static, str>, Box<Self>),
 }
 
@@ -14,6 +15,7 @@ impl std::fmt::Display for Error {
         match self {
             Self::Io(e) => write!(f, "{e}"),
             Self::SystemTime(e) => write!(f, "{e}"),
+            Self::ParseInt(e) => write!(f, "{e}"),
             Self::Context(msg, e) => write!(f, "{msg}: {e}"),
         }
     }
@@ -28,6 +30,12 @@ impl From<std::io::Error> for Error {
 impl From<std::time::SystemTimeError> for Error {
     fn from(e: std::time::SystemTimeError) -> Self {
         Self::SystemTime(e)
+    }
+}
+
+impl From<std::num::ParseIntError> for Error {
+    fn from(e: std::num::ParseIntError) -> Self {
+        Self::ParseInt(e)
     }
 }
 

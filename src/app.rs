@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use ratatui::{
     DefaultTerminal,
     crossterm::{
@@ -23,8 +25,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Result<Self, errors::Error> {
-        Ok(Self { is_running: true, stage: Stage::Ready(ReadyHandler), game: Game::new()? })
+    pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
+        Ok(Self { is_running: true, stage: Stage::Ready(ReadyHandler), game: Game::new(app_state_dir_path)? })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), errors::Error> {
@@ -80,6 +82,7 @@ impl App {
         // Stages keys
         if let Some(next_stage) = self.stage.handle_key_pressed_event(&mut self.game, *key_event) {
             self.stage = next_stage;
+            #[cfg(feature = "dev-console")]
             return;
         }
 
