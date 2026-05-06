@@ -3,7 +3,7 @@ edition = "2024"
 authors = ["rdrmic@gmail.com"]
 name = "color-columns-tui"
 description = "Color Columns"
-version = "0.0.14"
+version = "0.0.15"
 
 [dependencies]
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }

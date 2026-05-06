@@ -17,16 +17,14 @@ impl Scoring {
             let points = direction_points.1.into_iter().filter(|p| *p > 0).map(u16::from).product::<u16>();
             calculated_points_per_direction[direction_points.0] = if points == 1 { 0 } else { points };
         }
-        crate::dev_cyan!("calculated_points_per_direction: {calculated_points_per_direction:?}");
 
         let cascade_multiplier = self.calculate_cascade_multiplier();
 
         let calculated_points = calculated_points_per_direction.into_iter().filter(|p| *p > 0).product::<u16>() * cascade_multiplier;
-        crate::dev_cyan!("calculated_points: {calculated_points:?}");
-
         self.accumulated_points += calculated_points;
-        crate::dev_cyan!("self.accumulated_points: {:?}", self.accumulated_points);
+    }
 
+    pub fn count_in_accumulated_points(&mut self) {
         self.score += u32::from(self.accumulated_points);
 
         if self.accumulated_points > self.max_combo {

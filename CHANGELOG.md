@@ -1,3 +1,9 @@
+### 0.0.15 / 2026-05-06
+
+- Add clearing matches and "gravity" effect visually sequential
+
+// 520K (532.144)
+
 ### 0.0.14 / 2026-05-02
 
 - Find and clear the matches

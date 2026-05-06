@@ -37,18 +37,12 @@ impl App {
                 })
                 .context("Failed to draw to terminal")?;
 
-            if !self.game.is_column_locked {
-                self.tick();
-            }
-
             let event_waiting_time = self.stage.time_before_next_tick(&mut self.game);
             if crossterm::event::poll(event_waiting_time)? {
                 self.handle_events(&crossterm::event::read()?);
             }
 
-            if self.game.is_column_locked {
-                self.game.is_column_locked = false;
-            }
+            self.tick();
         }
 
         Ok(())

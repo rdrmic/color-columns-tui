@@ -23,28 +23,7 @@ impl Pile {
         self.matched_positions.clear();
     }
 
-    pub fn will_next_position_fit(&self, x: u8, column: &Column) -> bool {
-        let mut next_y_positions = [0; 3];
-        for (idx, y) in column.next_y_positions().into_iter().enumerate() {
-            next_y_positions[idx] = y;
-        }
-
-        let pile_height = i8::try_from(self.height).expect("Board height should fit in `i8`");
-        if next_y_positions[2] >= pile_height {
-            return false;
-        }
-
-        let stack_top_y = i8::try_from(self.find_stack_top_y(x)).expect("Stack top should fit in `i8`") - 1;
-        for y in next_y_positions {
-            if y > stack_top_y {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    pub fn lock(&mut self, column: &Column) {
+    pub fn lock(&mut self, column: &Column) -> bool {
         for (gem_x, gem_y, gem) in column.gems() {
             if let Ok(gem_y) = u8::try_from(gem_y) {
                 let idx = self.calculate_grid_idx(gem_x, gem_y);
@@ -52,20 +31,10 @@ impl Pile {
                     *slot = Some(gem);
                 }
             } else {
-                let last_gem_idx = self.calculate_grid_idx(gem_x, 0);
-                self.final_gem = Some((last_gem_idx, gem));
+                return false;
             }
         }
-    }
-
-    pub fn lock_final_gem(&mut self) {
-        if let Some((slot, gem)) = self.final_gem.and_then(|(idx, gem)| self.grid.get_mut(idx).map(|slot| (slot, gem))) {
-            *slot = Some(gem);
-        }
-    }
-
-    pub const fn is_overflowed(&self) -> bool {
-        self.final_gem.is_some()
+        true
     }
 
     pub fn get(&self, x: u8, y: u8) -> Option<Gem> {
@@ -75,10 +44,6 @@ impl Pile {
 
     const fn calculate_grid_idx(&self, x: u8, y: u8) -> usize {
         (y * self.width + x) as usize
-    }
-
-    fn find_stack_top_y(&self, x: u8) -> u8 {
-        (0..self.height).find(|&y| self.get(x, y).is_some()).unwrap_or(self.height)
     }
 
     // ============================================================================
@@ -160,7 +125,7 @@ impl Pile {
         }
     }
 
-    #[allow(clippy::cast_possible_wrap)] // For the hypothetical 16-bit platforms (which are extremely rare) edge case.
+    #[allow(clippy::cast_possible_wrap)] // Edge case for the hypothetical 16-bit platforms (which are extremely rare).
     fn find_matches_from_gem_position(&self, (dx, dy): (i8, i8), x: u8, y: u8) -> Option<Vec<(u8, u8)>> {
         let gem = self.get(x, y)?;
 
@@ -227,7 +192,7 @@ impl Pile {
 }
 
 // ============================================================================
-// Rendering Widget
+// Widget rendering
 // ============================================================================
 impl Widget for &Pile {
     fn render(self, area: Rect, buf: &mut Buffer) {

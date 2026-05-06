@@ -21,8 +21,13 @@ impl Column {
         self.is_falling = true;
     }
 
+    #[rustfmt::skip]
     pub const fn gems(&self) -> [(u8, i8, Gem); 3] {
-        [(self.x, self.y, self.gems[0]), (self.x, self.y + 1, self.gems[1]), (self.x, self.y + 2, self.gems[2])]
+        [
+            (self.x, self.y,     self.gems[0]),
+            (self.x, self.y + 1, self.gems[1]),
+            (self.x, self.y + 2, self.gems[2]),
+        ]
     }
 
     pub const fn next_y_positions(&self) -> [i8; 3] {
@@ -59,7 +64,7 @@ impl Column {
 }
 
 // ============================================================================
-// Rendering Widget
+// Widget rendering
 // ============================================================================
 impl Widget for &Column {
     fn render(self, area: Rect, buf: &mut Buffer) {

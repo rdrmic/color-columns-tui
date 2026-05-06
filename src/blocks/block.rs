@@ -87,7 +87,7 @@ impl Block {
 }
 
 // ============================================================================
-// Rendering Widget
+// Widget rendering
 // ============================================================================
 impl Widget for &Block {
     fn render(self, area: Rect, buf: &mut Buffer) {

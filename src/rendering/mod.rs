@@ -170,20 +170,26 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
 }
 
 fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
-    // TODO
-    let stats_text = vec![
-        Line::from(""),
-        Line::from(vec!["SCORE".into()]).style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        Line::from(game.score().to_string()).style(Style::default().fg(Color::Gray)),
-        Line::from(""),
-        Line::from(vec!["MAX COMBO".into()]).style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
-        Line::from(game.max_combo().to_string()).style(Style::default().fg(Color::Gray)),
-        Line::from(""),
-        Line::from(vec!["HIGHSCORE".into()]).style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-        Line::from(game.highscore().to_string()).style(Style::default().fg(Color::Gray)),
+    let value_style = Style::default().fg(Color::Indexed(152));
+
+    #[rustfmt::skip]
+    let stats = [
+        ("SCORE",       game.score(),                   Color::Green),
+        ("MAX COMBO",   u32::from(game.max_combo()),    Color::Blue),
+        ("HIGHSCORE",   game.highscore(),               Color::Red),
     ];
 
-    let stats = Paragraph::new(stats_text).block(Block::default().padding(ratatui::widgets::Padding::horizontal(2)));
+    let mut lines = Vec::with_capacity(stats.len() * 3 - 1);
+
+    for (i, (label, value, color)) in stats.into_iter().enumerate() {
+        if i > 0 {
+            lines.push(Line::default());
+        }
+        lines.push(Line::from(label).style(Style::default().fg(color).add_modifier(Modifier::BOLD)));
+        lines.push(Line::from(value.to_string()).style(value_style));
+    }
+
+    let stats = Paragraph::new(lines).block(Block::default().padding(ratatui::widgets::Padding::new(2, 2, 1, 0)));
     frame.render_widget(stats, area);
 }
 
@@ -262,7 +268,7 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 // Keys legend
 // ============================================================================
 const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).add_modifier(Modifier::BOLD);
-const STYLE_ACTIONS: Style = Style::new().fg(Color::Indexed(152));
+const STYLE_ACTIONS: Style = Style::new().fg(Color::Gray);
 
 struct LegendItem {
     key: &'static str,

@@ -50,15 +50,14 @@ impl StageHandler for GameplayHandler {
     }
 
     fn time_before_next_tick(&mut self, game: &mut Game) -> Duration {
-        let time_before_next_game_tick =
-            if game.is_column_locked { Duration::ZERO } else { game.tick_rate().checked_sub(self.last_tick.elapsed()).unwrap_or(Duration::ZERO) };
+        let time_before_next_game_tick = game.tick_rate().checked_sub(self.last_tick.elapsed()).unwrap_or(Duration::ZERO);
         FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
     }
 
     fn update(&mut self, game: &mut Game) -> Option<Stage> {
         let tick_rate = game.tick_rate();
 
-        // use `while` instead of `if` to catch up if the computer hitched
+        // Use `while` instead of `if` to catch up if the computer hitched
         while self.last_tick.elapsed() >= tick_rate {
             if let Some(gameover_stage) = self.try_updating_tick(game, self.last_tick + tick_rate) {
                 return Some(gameover_stage);

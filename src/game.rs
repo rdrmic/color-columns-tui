@@ -6,13 +6,20 @@ use crate::{
     score::Scoring,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)] // TODO clean up
+enum GameplayState {
+    ColumnFalling,
+    MatchesClearing,
+    GravityInProgress,
+}
+
 pub struct Game {
     column_next: Column,
     column_falling: Option<Column>,
     pile: Pile,
     scoring: Scoring,
     current_tick_duration: Duration,
-    pub is_column_locked: bool,
+    gameplay_state: GameplayState,
     rng: fastrand::Rng,
 }
 
@@ -37,7 +44,7 @@ impl Game {
             pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
             scoring: Scoring::new(),
             current_tick_duration: Self::INITIAL_TICK_DURATION,
-            is_column_locked: false,
+            gameplay_state: GameplayState::ColumnFalling,
             rng,
         })
     }
@@ -46,7 +53,7 @@ impl Game {
         self.pile.clear();
         self.scoring = Scoring::new();
         self.current_tick_duration = Self::INITIAL_TICK_DURATION;
-        self.is_column_locked = false;
+        self.gameplay_state = GameplayState::ColumnFalling;
         self.transition_next_column_to_falling();
         self.rng = create_rng()?;
 
@@ -54,113 +61,128 @@ impl Game {
     }
 
     pub fn tick(&mut self) -> bool {
-        if self.pile.is_overflowed() {
-            self.pile.lock_final_gem();
-            return false;
+        match self.gameplay_state {
+            GameplayState::ColumnFalling => self.tick_column_falling(),
+            GameplayState::MatchesClearing => self.tick_matches_clearing(),
+            GameplayState::GravityInProgress => self.tick_gravity_in_progress(),
         }
+    }
+
+    fn tick_column_falling(&mut self) -> bool {
+        let mut available_distance = self.get_available_distance_for_fall(0);
 
         let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
 
-        let x = column_falling.x();
-
-        if self.pile.will_next_position_fit(x, column_falling) {
+        if available_distance > 0 {
             column_falling.move_down(1);
+            available_distance -= 1;
+
             self.scoring.break_cascade_sequence();
-        } else {
-            self.pile.lock(column_falling);
-
-            let mut match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
-            if match_counts > 0 {
-                crate::dev_gray!("LOCK");
-
-                let points = all_directions_match_counts(match_counts);
-                crate::dev_red!("{points:?}");
-                self.scoring.add(points);
-
-                self.pile.clear_matches();
-                self.pile.apply_gravity();
-
-                while {
-                    match_counts = self.pile.find_matches(&MatchingStructure::Pile);
-                    match_counts > 0
-                } {
-                    let points = all_directions_match_counts(match_counts);
-                    crate::dev_red!("    {points:?}");
-                    self.scoring.add(points);
-
-                    self.pile.clear_matches();
-                    self.pile.apply_gravity();
-                }
-
-                crate::dev_gray!("==============================");
-                crate::dev_gray!("");
-            }
-
-            // TODO
-            //self.score += matched_gems; // Or use a multiplier for bigger chains
-
-            if self.pile.is_overflowed() {
-                self.pile.lock_final_gem();
-                return false;
-            }
-
-            self.is_column_locked = true;
-            self.transition_next_column_to_falling();
         }
 
-        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
-            self.accelerate(Self::ACCELERATION_FACTOR);
+        if available_distance == 0 {
+            let is_column_locked = self.pile.lock(column_falling);
+
+            let match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
+            if match_counts > 0 {
+                self.gameplay_state = GameplayState::MatchesClearing;
+
+                let points = all_directions_match_counts(match_counts);
+                self.scoring.add(points);
+            } else {
+                if !is_column_locked {
+                    return false;
+                }
+                self.gameplay_state = GameplayState::ColumnFalling;
+            }
+
+            self.transition_next_column_to_falling();
         }
 
         true
     }
 
-    // TODO
-    // fn process_matched_gems(&mut self, matching_structure: &MatchingStructure) {
-    //     //
-    // }
+    fn tick_matches_clearing(&mut self) -> bool {
+        self.pile.clear_matches();
+        self.gameplay_state = GameplayState::GravityInProgress;
+        true
+    }
+
+    fn tick_gravity_in_progress(&mut self) -> bool {
+        self.pile.apply_gravity();
+
+        self.scoring.count_in_accumulated_points();
+        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
+            self.accelerate(Self::ACCELERATION_FACTOR);
+        }
+
+        let match_counts = self.pile.find_matches(&MatchingStructure::Pile);
+        if match_counts > 0 {
+            let points = all_directions_match_counts(match_counts);
+            self.scoring.add(points);
+
+            self.gameplay_state = GameplayState::MatchesClearing;
+        } else {
+            self.gameplay_state = GameplayState::ColumnFalling;
+        }
+
+        true
+    }
 
     pub fn move_left(&mut self) {
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
-        let x = column_falling.x();
-        if x > 0 && self.pile.will_next_position_fit(x - 1, column_falling) {
+        let available_distance = self.get_available_distance_for_fall(-1);
+        if available_distance > 0 {
+            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
             column_falling.move_left();
         }
     }
 
     pub fn move_right(&mut self) {
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
-        let x = column_falling.x();
-        if x < Self::BOARD_WIDTH - 1 && self.pile.will_next_position_fit(x + 1, column_falling) {
+        let available_distance = self.get_available_distance_for_fall(1);
+        if available_distance > 0 {
+            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
             column_falling.move_right();
         }
     }
 
     pub const fn rotate_up(&mut self) {
         let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
         column_falling.rotate_up();
     }
 
     pub const fn rotate_down(&mut self) {
         let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
         column_falling.rotate_down();
     }
 
     pub fn drop(&mut self) {
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
-        let x = column_falling.x();
-        let first_occupied_y = (0..Self::BOARD_HEIGHT).find(|&y| self.pile.get(x, y).is_some()).unwrap_or(Self::BOARD_HEIGHT);
-        let first_occupied_y = i8::try_from(first_occupied_y).expect("Board height should fit in `i8`");
-
-        let distance = first_occupied_y - 1 - column_falling.y_bottom();
-        if distance > 0 {
-            column_falling.move_down(distance);
+        let available_distance = self.get_available_distance_for_fall(0);
+        if available_distance > 0 {
+            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
+            column_falling.move_down(available_distance);
         }
+    }
+
+    fn get_available_distance_for_fall(&self, x_offset: i8) -> i8 {
+        let column_falling = self.column_falling.as_ref().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
+
+        let x_as_i8 = i8::try_from(column_falling.x()).expect("`x` should fit in `i8`");
+        let x = if x_offset == 0 {
+            x_as_i8
+        } else {
+            let x_moved = x_as_i8 + x_offset;
+            if x_moved < 0 || x_moved >= i8::try_from(Self::BOARD_WIDTH).expect("Board width should fit in `i8`") {
+                return -1;
+            }
+            x_moved
+        };
+
+        let x = u8::try_from(x).expect("At this point, `x` must fit in `u8`");
+
+        let first_occupied_y = (0..Self::BOARD_HEIGHT).find(|&y| self.pile.get(x, y).is_some()).unwrap_or(Self::BOARD_HEIGHT);
+        let first_occupied_y = i8::try_from(first_occupied_y).expect("Board height should fit in `i8`") - 1;
+
+        first_occupied_y - column_falling.y_bottom()
     }
 
     pub const fn get_next_column(&self) -> &Column {
@@ -176,8 +198,7 @@ impl Game {
     }
 
     pub const fn tick_rate(&self) -> Duration {
-        if self.is_column_locked { Duration::ZERO } else { self.current_tick_duration }
-        //self.current_tick_duration
+        self.current_tick_duration
     }
 
     pub const fn score(&self) -> u32 {
