@@ -2,7 +2,6 @@ use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 use crate::blocks::{Block, Gem};
 
-#[derive(Debug)]
 pub struct Column {
     x: u8,
     y: i8,

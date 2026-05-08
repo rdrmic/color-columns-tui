@@ -1,3 +1,19 @@
+### 0.1.1 / 2026-05-08
+
+- Skip tick if there aren't hanging blocks
+- Log random seed for reproducibility
+- Simplify `GameOverHandler`
+- Binary size optimizations
+  - Render key legends dynamically
+  - Remove all `#[derive(Debug)]` attributes
+  - Implement `Debug` for `Error` in `errors.rs`
+  - Replace `with_context` debug-formatted message with unified `.context` one in `game.rs`: `create_rng`
+  - Eliminate `f64` math for acceleration calculation
+  - Use `concat!` macro to create terminal title in compile time
+  - Reuse `FAILED_TO_START_GAME_ERROR` `&str` constant across stage handlers
+
+// 522K (534.112)
+
 ### 0.1.0 / 2026-05-06    --> Fully playable game
 
 - Persist and read high score from file
@@ -24,7 +40,7 @@
 
 ### 0.0.13 / 2026-04-28
 
-- Binary size optimization
+- Binary size optimizations
     - Change `lto = true` to `lto = "fat"`
     - Add `features = ["release_max_level_off"]` to `log`
     - Replace `env_logger` with a simple custom logger

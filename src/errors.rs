@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-#[derive(Debug)]
 pub enum Error {
     Io(std::io::Error),
     SystemTime(std::time::SystemTimeError),
@@ -9,6 +8,12 @@ pub enum Error {
 }
 
 impl std::error::Error for Error {}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -42,6 +47,7 @@ impl From<std::num::ParseIntError> for Error {
 // ============================================================================
 // Context Trait
 // ============================================================================
+#[allow(unused)]
 pub trait Context<T> {
     fn context(self, msg: impl Into<Cow<'static, str>>) -> Result<T, Error>;
 

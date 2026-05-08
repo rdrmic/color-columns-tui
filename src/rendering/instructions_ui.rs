@@ -1,9 +1,6 @@
-use std::sync::LazyLock;
-
 use ratatui::{
     Frame,
     layout::Rect,
-    text::Text,
     widgets::{Block, Padding, Paragraph, Wrap},
 };
 
@@ -11,14 +8,12 @@ use super::{LegendItem, compile_legend, draw_keys_legend};
 
 #[rustfmt::skip]
 const LEGEND_ITEMS: &[LegendItem] = &[
-    LegendItem { key: "Enter", action: "Return to menu" },
+    LegendItem { key: "Enter", action: "Return to game" },
     LegendItem { key: "Q",     action: "Quit" },
 ];
 
-static LEGEND: LazyLock<(Text<'_>, Text<'_>)> = LazyLock::new(|| compile_legend(LEGEND_ITEMS));
-
 pub(super) fn draw_footer(frame: &mut Frame, area: Rect) {
-    draw_keys_legend(frame, area, &LEGEND);
+    draw_keys_legend(frame, area, &compile_legend(LEGEND_ITEMS));
 }
 
 pub(super) fn draw_instructions(frame: &mut Frame, area: Rect) {

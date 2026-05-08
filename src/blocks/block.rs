@@ -20,7 +20,7 @@ const STYLE_AMETHYST: Style = Style::new().bg(Color::Magenta);
 
 macro_rules! define_block_variants {
     ($($gem:ident => $style:ident),*) => {
-        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq)]
         pub enum Gem {
             $($gem),*
         }

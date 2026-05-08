@@ -9,11 +9,10 @@ use crate::{
     scoring::Scoring,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)] // TODO clean up
 enum GameplayState {
-    ColumnFalling,
-    MatchesClearing,
-    HangingBlocksGravity,
+    FallingColumn,
+    ClearingMatches,
+    ApplyingHangingBlocksGravity,
 }
 
 pub struct Game {
@@ -34,8 +33,8 @@ impl Game {
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
     const MIN_TICK_DURATION: Duration = Duration::from_millis(100);
 
-    const ACCELERATION_SCORE_POINTS: u16 = 100; // new score points required for acceleration
-    const ACCELERATION_FACTOR: f64 = 0.98; // reduce the current tick duration by 2%
+    const ACCELERATION_SCORE_POINTS: u8 = 100; // new score points required for acceleration
+    const ACCELERATION_FACTOR: u8 = 98; // reduce the current tick duration by 2%
 
     const FALLING_COLUMN_NOT_INITIALIZED_ERROR: &str = "Falling column must be initialized";
 
@@ -50,7 +49,7 @@ impl Game {
             pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
             scoring: Scoring::new(app_state_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
-            gameplay_state: GameplayState::ColumnFalling,
+            gameplay_state: GameplayState::FallingColumn,
             app_state_dir_path,
             rng,
         })
@@ -60,7 +59,7 @@ impl Game {
         self.pile.clear();
         self.scoring = Scoring::new(self.app_state_dir_path.as_deref())?;
         self.current_tick_duration = Self::INITIAL_TICK_DURATION;
-        self.gameplay_state = GameplayState::ColumnFalling;
+        self.gameplay_state = GameplayState::FallingColumn;
         self.transition_next_column_to_falling();
         self.rng = create_rng()?;
 
@@ -69,12 +68,12 @@ impl Game {
 
     pub fn tick(&mut self) -> bool {
         let is_running = match self.gameplay_state {
-            GameplayState::ColumnFalling => self.tick_column_falling(),
-            GameplayState::MatchesClearing => self.tick_matches_clearing(),
-            GameplayState::HangingBlocksGravity => self.tick_hanging_blocks_gravity(),
+            GameplayState::FallingColumn => self.tick_falling_column(),
+            GameplayState::ClearingMatches => self.tick_clearing_matches(),
+            GameplayState::ApplyingHangingBlocksGravity => self.tick_applying_hanging_blocks_gravity(),
         };
         if !is_running {
-            let _ = self.scoring.write_highscore_to_file(self.app_state_dir_path.as_deref()).inspect_err(|e| log::error!("{e}"));
+            self.write_highscore_to_file();
             return false;
         }
         true
@@ -142,67 +141,6 @@ impl Game {
         self.scoring.highscore()
     }
 
-    fn tick_column_falling(&mut self) -> bool {
-        let mut available_distance = self.get_available_distance_for_fall(0);
-
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
-        if available_distance > 0 {
-            column_falling.move_down(1);
-            available_distance -= 1;
-
-            self.scoring.break_cascade_sequence();
-        }
-
-        if available_distance == 0 {
-            let is_column_locked = self.pile.lock(column_falling);
-
-            let match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
-            if match_counts > 0 {
-                self.gameplay_state = GameplayState::MatchesClearing;
-
-                let points = all_directions_match_counts(match_counts);
-                self.scoring.add(points);
-            } else {
-                if !is_column_locked {
-                    return false;
-                }
-                self.gameplay_state = GameplayState::ColumnFalling;
-            }
-
-            self.transition_next_column_to_falling();
-        }
-
-        true
-    }
-
-    fn tick_matches_clearing(&mut self) -> bool {
-        self.pile.clear_matches();
-        self.gameplay_state = GameplayState::HangingBlocksGravity;
-        true
-    }
-
-    fn tick_hanging_blocks_gravity(&mut self) -> bool {
-        self.pile.apply_hanging_blocks_gravity();
-
-        self.scoring.count_in_accumulated_points();
-        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
-            self.accelerate(Self::ACCELERATION_FACTOR);
-        }
-
-        let match_counts = self.pile.find_matches(&MatchingStructure::Pile);
-        if match_counts > 0 {
-            let points = all_directions_match_counts(match_counts);
-            self.scoring.add(points);
-
-            self.gameplay_state = GameplayState::MatchesClearing;
-        } else {
-            self.gameplay_state = GameplayState::ColumnFalling;
-        }
-
-        true
-    }
-
     fn create_column(rng: &mut fastrand::Rng) -> Column {
         Column::new(0, 0, rng)
     }
@@ -238,18 +176,89 @@ impl Game {
         first_occupied_y - column_falling.y_bottom()
     }
 
-    fn accelerate(&mut self, factor: f64) {
-        let new_tick_rate = self.current_tick_duration.mul_f64(factor);
-        self.current_tick_duration = new_tick_rate.max(Self::MIN_TICK_DURATION);
+    fn accelerate(&mut self) {
+        let current_ms = self.current_tick_duration.as_millis() as u64;
+        let new_ms = (current_ms * u64::from(Self::ACCELERATION_FACTOR)) / 100;
+        self.current_tick_duration = Duration::from_millis(new_ms).max(Self::MIN_TICK_DURATION);
+    }
+
+    fn write_highscore_to_file(&self) {
+        let _ = self.scoring.write_highscore_to_file(self.app_state_dir_path.as_deref()).inspect_err(|e| log::error!("{e}"));
+    }
+    // ============================================================================
+    // Ticks
+    // ============================================================================
+    fn tick_falling_column(&mut self) -> bool {
+        let mut available_distance = self.get_available_distance_for_fall(0);
+
+        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
+
+        if available_distance > 0 {
+            column_falling.move_down(1);
+            available_distance -= 1;
+
+            self.scoring.break_cascade_sequence();
+        }
+
+        if available_distance == 0 {
+            let is_column_locked = self.pile.lock(column_falling);
+
+            let match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
+            if match_counts > 0 {
+                self.gameplay_state = GameplayState::ClearingMatches;
+
+                let points = all_directions_match_counts(match_counts);
+                self.scoring.add(points);
+            } else {
+                if !is_column_locked {
+                    return false;
+                }
+                self.gameplay_state = GameplayState::FallingColumn;
+            }
+
+            self.transition_next_column_to_falling();
+        }
+
+        true
+    }
+
+    fn tick_clearing_matches(&mut self) -> bool {
+        self.pile.clear_matches();
+
+        self.gameplay_state = if self.pile.has_hanging_blocks() { GameplayState::ApplyingHangingBlocksGravity } else { GameplayState::FallingColumn };
+
+        true
+    }
+
+    fn tick_applying_hanging_blocks_gravity(&mut self) -> bool {
+        self.pile.apply_hanging_blocks_gravity();
+
+        let match_counts = self.pile.find_matches(&MatchingStructure::Pile);
+        if match_counts > 0 {
+            let points = all_directions_match_counts(match_counts);
+            self.scoring.add(points);
+
+            self.gameplay_state = GameplayState::ClearingMatches;
+        } else {
+            self.gameplay_state = GameplayState::FallingColumn;
+        }
+
+        self.scoring.count_in_accumulated_points();
+        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
+            self.accelerate();
+        }
+
+        true
     }
 }
 
+#[rustfmt::skip]
 fn create_rng() -> Result<fastrand::Rng, errors::Error> {
     let now = SystemTime::now();
-    let seed = now
-        .duration_since(UNIX_EPOCH)
-        .with_context(|| format!("System clock is set before 1970? Current time: {now:?}"))
-        .context("Failed to generate a random seed from system time")?
+    let seed = now.duration_since(UNIX_EPOCH)
+        .context("Failed to generate random seed from system time: system clock is set before year 1970")?
         .as_millis() as u64;
+
+    log::debug!("Using random seed: {seed}");
     Ok(fastrand::Rng::with_seed(seed))
 }

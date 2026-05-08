@@ -13,6 +13,8 @@ use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
 
 use crate::errors::Context;
 
+const TERMINAL_TITLE: &str = concat!(env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION"));
+
 fn main() {
     let app_state_dir_path = create_app_state_dir().context("Failed to create application state directory").inspect_err(|e| eprintln!("Warning: {e}")).ok();
 
@@ -90,10 +92,9 @@ fn check_terminal_size() -> Result<(), errors::Error> {
 }
 
 fn set_terminal_title() {
-    let title = [env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION")].concat();
-    let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(&title))
-        .inspect(|()| log::info!("Terminal title '{title}' set"))
-        .inspect_err(|e| log::warn!("Settting terminal title ({title}) failed: {e}"));
+    let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(&TERMINAL_TITLE))
+        .inspect(|()| log::info!("Terminal title '{TERMINAL_TITLE}' set"))
+        .inspect_err(|e| log::warn!("Settting terminal title ({TERMINAL_TITLE}) failed: {e}"));
 }
 
 fn init_terminal() -> Terminal<CrosstermBackend<std::io::Stdout>> {

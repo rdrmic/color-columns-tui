@@ -5,35 +5,22 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use crate::{
     errors::Context,
     game::Game,
-    stage_handlers::{FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
+    stage_handlers::{FAILED_TO_START_GAME_ERROR, FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
 };
 
-pub struct GameOverHandler {
-    is_stage_initialized: bool,
-}
-
-impl GameOverHandler {
-    pub const fn new() -> Self {
-        Self { is_stage_initialized: false }
-    }
-}
+pub struct GameOverHandler;
 
 impl StageHandler for GameOverHandler {
     fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage> {
         if key_event.code == KeyCode::Enter {
-            game.start().context("Failed to start the game").ok()?;
+            game.start().context(FAILED_TO_START_GAME_ERROR).ok()?;
             return Some(Stage::Gameplay(GameplayHandler::new()));
         }
         None
     }
 
     fn time_before_next_tick(&mut self, _game: &mut Game) -> Duration {
-        if self.is_stage_initialized {
-            self.is_stage_initialized = true;
-            FRAME_DURATION_IDLE
-        } else {
-            Duration::ZERO
-        }
+        FRAME_DURATION_IDLE
     }
 
     fn update(&mut self, _game: &mut Game) -> Option<Stage> {

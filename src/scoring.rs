@@ -72,7 +72,7 @@ impl Scoring {
     }
 
     pub fn write_highscore_to_file(&self, app_state_dir_path: Option<&Path>) -> Result<(), errors::Error> {
-        let file_path = Self::get_highscore_filepath(app_state_dir_path)?;
+        let file_path = Self::get_highscore_file_path(app_state_dir_path)?;
 
         let mut file = std::fs::File::create(file_path)?;
         write!(file, "{}", self.highscore())?;
@@ -80,9 +80,9 @@ impl Scoring {
     }
 
     fn read_highscore_from_file(app_state_dir_path: Option<&Path>) -> Result<u32, errors::Error> {
-        let filepath = Self::get_highscore_filepath(app_state_dir_path)?;
+        let file_path = Self::get_highscore_file_path(app_state_dir_path)?;
 
-        let contents = match std::fs::read_to_string(&filepath) {
+        let contents = match std::fs::read_to_string(&file_path) {
             Ok(contents) => contents,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(0),
             Err(err) => return Err(err.into()),
@@ -92,7 +92,7 @@ impl Scoring {
         Ok(highscore)
     }
 
-    fn get_highscore_filepath(app_state_dir_path: Option<&Path>) -> Result<PathBuf, errors::Error> {
+    fn get_highscore_file_path(app_state_dir_path: Option<&Path>) -> Result<PathBuf, errors::Error> {
         let path = app_state_dir_path.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "App state directory path is missing"))?;
         Ok(path.join(Self::HIGHSCORE_FILE_NAME))
     }

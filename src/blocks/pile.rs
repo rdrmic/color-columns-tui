@@ -8,18 +8,16 @@ pub struct Pile {
     width: u8,
     height: u8,
     grid: Vec<Option<Gem>>,
-    final_gem: Option<(usize, Gem)>,
     matched_positions: HashSet<(u8, u8)>,
 }
 
 impl Pile {
     pub fn new(width: u8, height: u8) -> Self {
-        Self { width, height, grid: vec![], final_gem: None, matched_positions: HashSet::new() }
+        Self { width, height, grid: vec![], matched_positions: HashSet::new() }
     }
 
     pub fn clear(&mut self) {
         self.grid = vec![None; (self.width * self.height) as usize];
-        self.final_gem = None;
         self.matched_positions.clear();
     }
 
@@ -107,18 +105,35 @@ impl Pile {
         self.matched_positions.clear();
     }
 
+    pub fn has_hanging_blocks(&self) -> bool {
+        for x in 0..self.width {
+            for y in 0..self.height {
+                if self.get(x, y).is_some() {
+                    for y_bellow in (y + 1)..self.height {
+                        if self.get(x, y_bellow).is_none() {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Scans through all rows from top to bottom (`y_read_pos`).
+    /// Whenever it finds a gem, it moves it down to the lowest available row (`y_write_pos`).
     pub fn apply_hanging_blocks_gravity(&mut self) {
         for x in 0..self.width {
-            let mut write_pos = self.height.saturating_sub(1);
-            for read_pos in (0..self.height).rev() {
-                if self.get(x, read_pos).is_some() {
-                    if read_pos != write_pos {
-                        let read_idx = self.calculate_grid_idx(x, read_pos);
-                        let write_idx = self.calculate_grid_idx(x, write_pos);
+            let mut y_write_pos = self.height.saturating_sub(1);
+            for y_read_pos in (0..self.height).rev() {
+                if self.get(x, y_read_pos).is_some() {
+                    if y_read_pos != y_write_pos {
+                        let write_idx = self.calculate_grid_idx(x, y_write_pos);
+                        let read_idx = self.calculate_grid_idx(x, y_read_pos);
                         self.grid[write_idx] = self.grid[read_idx];
                         self.grid[read_idx] = None;
                     }
-                    write_pos = write_pos.saturating_sub(1);
+                    y_write_pos = y_write_pos.saturating_sub(1);
                 }
             }
         }

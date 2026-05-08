@@ -18,7 +18,7 @@ impl GameplayHandler {
 
     fn try_updating_tick(&mut self, game: &mut Game, next_tick: Instant) -> Option<Stage> {
         if !game.tick() {
-            return Some(Stage::GameOver(GameOverHandler::new()));
+            return Some(Stage::GameOver(GameOverHandler));
         }
         self.last_tick = next_tick;
         None
