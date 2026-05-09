@@ -1,3 +1,14 @@
+### 0.1.2 / 2026-05-09
+
+- Binary size optimizations
+  - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6.528)
+  - Enable `-Zlocation-detail=none`  (-37.424)
+  - Enable `-Zfmt-debug=none` (- 9.920)
+  - Reduce inline threshold for monomorphization control (`-Cllvm-args=--inline-threshold=45`) (- 11.376)
+  - Add `stderr_warning` utility function in `main.rs` (- 224)
+
+// 458K (468.640)
+
 ### 0.1.1 / 2026-05-08
 
 - Skip tick if there aren't hanging blocks

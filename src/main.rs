@@ -16,13 +16,10 @@ use crate::errors::Context;
 const TERMINAL_TITLE: &str = concat!(env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION"));
 
 fn main() {
-    let app_state_dir_path = create_app_state_dir().context("Failed to create application state directory").inspect_err(|e| eprintln!("Warning: {e}")).ok();
+    let app_state_dir_path = create_app_state_dir().context("Failed to create application state directory").map_err(stderr_warning).ok();
 
-    let log_file_path = logging::file_logger::init_logger(app_state_dir_path.as_deref())
-        .context("Failed to setup application logging")
-        .inspect_err(|e| eprintln!("Warning: {e}"))
-        .ok()
-        .flatten();
+    let log_file_path =
+        logging::file_logger::init_logger(app_state_dir_path.as_deref()).context("Failed to setup application logging").map_err(stderr_warning).ok().flatten();
 
     let original_hook = std::panic::take_hook();
     let is_logging_initialized = log_file_path.is_some();
@@ -113,4 +110,8 @@ fn restore_terminal() {
         .inspect_err(|e| log::warn!("Mouse event capturing disabling failed: {e}"));
 
     ratatui::restore();
+}
+
+fn stderr_warning(e: impl std::fmt::Display) {
+    eprintln!("Warning: {e}");
 }

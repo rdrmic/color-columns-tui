@@ -1,0 +1,8 @@
+[build]
+rustflags = [
+    "-Clink-arg=-Wl,--gc-sections",
+    "-Clink-arg=-Wl,--icf=all",
+    "-Zlocation-detail=none",
+    "-Zfmt-debug=none",
+    "-Cllvm-args=--inline-threshold=45",
+]
