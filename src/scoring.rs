@@ -3,9 +3,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::errors;
+use crate::{blocks::unpack_matches_points, errors};
 
 pub struct Scoring {
+    level: u32,
     score: u32,
     max_combo: u16,
     highscore: u32,
@@ -20,6 +21,7 @@ impl Scoring {
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
         Ok(
             Self {
+                level: 1,
                 score: 0,
                 max_combo: 0,
                 highscore: Self::read_highscore_from_file(app_state_dir_path)?,
@@ -29,9 +31,11 @@ impl Scoring {
         )
     }
 
-    pub fn add(&mut self, points: [[u8; 4]; 4]) {
+    pub fn add(&mut self, bit_packed_points: u64) {
+        let all_matches_points = unpack_matches_points(bit_packed_points);
+
         let mut calculated_points_per_direction = [0; 4];
-        for direction_points in points.into_iter().enumerate() {
+        for direction_points in all_matches_points.into_iter().enumerate() {
             let points = direction_points.1.into_iter().filter(|p| *p > 0).map(u16::from).product::<u16>();
             calculated_points_per_direction[direction_points.0] = if points == 1 { 0 } else { points };
         }
@@ -40,18 +44,22 @@ impl Scoring {
 
         let calculated_points = calculated_points_per_direction.into_iter().filter(|p| *p > 0).product::<u16>() * cascade_multiplier;
         self.accumulated_points += calculated_points;
+
+        self.count_in_accumulated_points();
     }
 
-    pub fn count_in_accumulated_points(&mut self) {
-        self.score += u32::from(self.accumulated_points);
-
-        if self.accumulated_points > self.max_combo {
-            self.max_combo = self.accumulated_points;
+    pub const fn is_level_increased(&mut self) -> bool {
+        let calculated_level = Self::calculate_level(self.score);
+        if calculated_level > self.level {
+            self.level = calculated_level;
+            true
+        } else {
+            false
         }
+    }
 
-        if self.score > self.highscore {
-            self.highscore = self.score;
-        }
+    pub const fn level(&self) -> u32 {
+        self.level
     }
 
     pub const fn score(&self) -> u32 {
@@ -71,6 +79,41 @@ impl Scoring {
         self.cascade_count = 0;
     }
 
+    const fn calculate_cascade_multiplier(&mut self) -> u16 {
+        // *1 *3 *4 *5 etc.
+        self.cascade_count += 1;
+        if self.cascade_count == 1 {
+            return 1;
+        }
+        1 + self.cascade_count as u16
+    }
+
+    fn count_in_accumulated_points(&mut self) {
+        self.score += u32::from(self.accumulated_points);
+
+        if self.accumulated_points > self.max_combo {
+            self.max_combo = self.accumulated_points;
+        }
+
+        if self.score > self.highscore {
+            self.highscore = self.score;
+        }
+    }
+
+    const fn calculate_level(score: u32) -> u32 {
+        match score {
+            0..50 => 1,
+            50..150 => 2,
+            150..300 => 3,
+            300..500 => 4,
+            // For scores 500 and above, every 250 points is a new level
+            _ => 5 + ((score - 500) / 250),
+        }
+    }
+
+    // ============================================================================
+    // Highscore: reading from and writing to file
+    // ============================================================================
     pub fn write_highscore_to_file(&self, app_state_dir_path: Option<&Path>) -> Result<(), errors::Error> {
         let file_path = Self::get_highscore_file_path(app_state_dir_path)?;
 
@@ -95,14 +138,5 @@ impl Scoring {
     fn get_highscore_file_path(app_state_dir_path: Option<&Path>) -> Result<PathBuf, errors::Error> {
         let path = app_state_dir_path.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "App state directory path is missing"))?;
         Ok(path.join(Self::HIGHSCORE_FILE_NAME))
-    }
-
-    const fn calculate_cascade_multiplier(&mut self) -> u16 {
-        // *1 *3 *4 *5 etc.
-        self.cascade_count += 1;
-        if self.cascade_count == 1 {
-            return 1;
-        }
-        1 + self.cascade_count as u16
     }
 }

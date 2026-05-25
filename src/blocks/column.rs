@@ -63,6 +63,19 @@ impl Column {
 }
 
 // ============================================================================
+// Falling Column placeholder
+// ============================================================================
+pub trait FallingColumnPlaceholder {
+    fn placeholder() -> Self;
+}
+
+impl FallingColumnPlaceholder for Column {
+    fn placeholder() -> Self {
+        Self { x: 0, y: i8::MIN, gems: [Gem::Emerald, Gem::Emerald, Gem::Emerald], is_falling: false }
+    }
+}
+
+// ============================================================================
 // Widget rendering
 // ============================================================================
 impl Widget for &Column {

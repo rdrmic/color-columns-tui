@@ -3,8 +3,8 @@ mod column;
 mod pile;
 
 pub use block::{Block, Gem};
-pub use column::Column;
-pub use num_matches_unpacking::all_directions_match_counts;
+pub use column::{Column, FallingColumnPlaceholder};
+pub use num_matches_unpacking::unpack_matches_points;
 pub use pile::Pile;
 
 // ============================================================================
@@ -53,25 +53,24 @@ pub mod num_matches_unpacking {
         (NUM_DIRECTIONS - 4) * DIRECTION_BITS,
     ];
 
-    /// Unpack a direction match counts into max possible 4 counts
     #[inline]
-    const fn direction_match_counts(counts: u16) -> [u8; 4] {
+    const fn unpack_max_match_points_per_direction(points: u16) -> [u8; 4] {
         [
-            ((counts >> MATCH_SHIFTS[0]) & MATCH_MASK) as u8,
-            ((counts >> MATCH_SHIFTS[1]) & MATCH_MASK) as u8,
-            ((counts >> MATCH_SHIFTS[2]) & MATCH_MASK) as u8,
-            ((counts >> MATCH_SHIFTS[3]) & MATCH_MASK) as u8,
+            ((points >> MATCH_SHIFTS[0]) & MATCH_MASK) as u8,
+            ((points >> MATCH_SHIFTS[1]) & MATCH_MASK) as u8,
+            ((points >> MATCH_SHIFTS[2]) & MATCH_MASK) as u8,
+            ((points >> MATCH_SHIFTS[3]) & MATCH_MASK) as u8,
         ]
     }
 
-    /// Unpack all 4 directions counts pack into: [direction][matches]
+    /// Unpack all 4 maximum matches points for all 4 directions into: [direction][points]
     #[inline]
-    pub const fn all_directions_match_counts(counts: u64) -> [[u8; 4]; 4] {
+    pub const fn unpack_matches_points(packed_points: u64) -> [[u8; 4]; 4] {
         [
-            direction_match_counts(((counts >> DIRECTION_SHIFTS[0]) & DIRECTION_MASK) as u16),
-            direction_match_counts(((counts >> DIRECTION_SHIFTS[1]) & DIRECTION_MASK) as u16),
-            direction_match_counts(((counts >> DIRECTION_SHIFTS[2]) & DIRECTION_MASK) as u16),
-            direction_match_counts(((counts >> DIRECTION_SHIFTS[3]) & DIRECTION_MASK) as u16),
+            unpack_max_match_points_per_direction(((packed_points >> DIRECTION_SHIFTS[0]) & DIRECTION_MASK) as u16),
+            unpack_max_match_points_per_direction(((packed_points >> DIRECTION_SHIFTS[1]) & DIRECTION_MASK) as u16),
+            unpack_max_match_points_per_direction(((packed_points >> DIRECTION_SHIFTS[2]) & DIRECTION_MASK) as u16),
+            unpack_max_match_points_per_direction(((packed_points >> DIRECTION_SHIFTS[3]) & DIRECTION_MASK) as u16),
         ]
     }
 }

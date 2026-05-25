@@ -169,22 +169,29 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
     }
 }
 
+// TODO
 fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
     let value_style = Style::default().fg(Color::Indexed(152));
 
     #[rustfmt::skip]
     let stats = [
-        ("SCORE",       game.score(),                   Color::Green),
-        ("MAX COMBO",   u32::from(game.max_combo()),    Color::Blue),
-        ("HIGHSCORE",   game.highscore(),               Color::Red),
+        ("LEVEL",       game.scoring().level(),                   Color::Yellow),
+        ("SCORE",       game.scoring().score(),                   Color::Green),
+        ("MAX COMBO",   u32::from(game.scoring().max_combo()),    Color::Magenta),
+        ("HIGHSCORE",   game.scoring().highscore(),               Color::Red),
     ];
 
     let mut lines = Vec::with_capacity(stats.len() * 3 - 1);
 
-    for (i, (label, value, color)) in stats.into_iter().enumerate() {
-        if i > 0 {
-            lines.push(Line::default());
-        }
+    // for (i, (label, value, color)) in stats.into_iter().enumerate() {
+    //     if i > 0 {
+    //         lines.push(Line::default());
+    //     }
+    //     lines.push(Line::from(label).style(Style::default().fg(color).add_modifier(Modifier::BOLD)));
+    //     lines.push(Line::from(value.to_string()).style(value_style));
+    // }
+
+    for (label, value, color) in stats {
         lines.push(Line::from(label).style(Style::default().fg(color).add_modifier(Modifier::BOLD)));
         lines.push(Line::from(value.to_string()).style(value_style));
     }
@@ -206,13 +213,11 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
         let flicker_tick = pause_handler.flicker_tick();
 
         // Falling column with random colors
-        if let Some(column) = game.get_falling_column() {
-            for (x, y, _) in column.gems() {
-                if y >= 0 {
-                    let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, x, y);
-                    let flickered_gem = Gem::random_for_pause(seed);
-                    frame.render_widget(&blocks::Block::new(x, y, flickered_gem), board_inner_area);
-                }
+        for (x, y, _) in game.get_falling_column().gems() {
+            if y >= 0 {
+                let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, x, y);
+                let flickered_gem = Gem::random_for_pause(seed);
+                frame.render_widget(&blocks::Block::new(x, y, flickered_gem), board_inner_area);
             }
         }
 

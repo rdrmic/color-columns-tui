@@ -4,20 +4,20 @@ use std::{
 };
 
 use crate::{
-    blocks::{Column, MatchingStructure, Pile, all_directions_match_counts},
+    blocks::{Column, FallingColumnPlaceholder, MatchingStructure, Pile},
     errors::{self, Context},
     scoring::Scoring,
 };
 
 enum GameplayState {
     FallingColumn,
-    ClearingMatches,
-    ApplyingHangingBlocksGravity,
+    ClearingMatches(u64),
+    ApplyingHangingGemsGravity,
 }
 
 pub struct Game {
     column_next: Column,
-    column_falling: Option<Column>,
+    column_falling: Column,
     pile: Pile,
     scoring: Scoring,
     current_tick_duration: Duration,
@@ -32,11 +32,7 @@ impl Game {
 
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
     const MIN_TICK_DURATION: Duration = Duration::from_millis(100);
-
-    const ACCELERATION_SCORE_POINTS: u8 = 100; // new score points required for acceleration
-    const ACCELERATION_FACTOR: u8 = 98; // reduce the current tick duration by 2%
-
-    const FALLING_COLUMN_NOT_INITIALIZED_ERROR: &str = "Falling column must be initialized";
+    const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
 
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
         let app_state_dir_path = app_state_dir_path.map(PathBuf::from);
@@ -45,7 +41,7 @@ impl Game {
 
         Ok(Self {
             column_next: Self::create_column(&mut rng),
-            column_falling: None,
+            column_falling: Column::placeholder(),
             pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
             scoring: Scoring::new(app_state_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
@@ -63,53 +59,38 @@ impl Game {
         self.transition_next_column_to_falling();
         self.rng = create_rng()?;
 
-        Ok(())
-    }
+        crate::dev_cyan!("Score: {:<5}    Level: {:<5}        {:?}", self.scoring.score(), self.scoring.level(), self.current_tick_duration);
+        crate::dev_gray!("-----------------------------------------");
 
-    pub fn tick(&mut self) -> bool {
-        let is_running = match self.gameplay_state {
-            GameplayState::FallingColumn => self.tick_falling_column(),
-            GameplayState::ClearingMatches => self.tick_clearing_matches(),
-            GameplayState::ApplyingHangingBlocksGravity => self.tick_applying_hanging_blocks_gravity(),
-        };
-        if !is_running {
-            self.write_highscore_to_file();
-            return false;
-        }
-        true
+        Ok(())
     }
 
     pub fn move_left(&mut self) {
         let available_distance = self.get_available_distance_for_fall(-1);
         if available_distance > 0 {
-            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-            column_falling.move_left();
+            self.column_falling.move_left();
         }
     }
 
     pub fn move_right(&mut self) {
         let available_distance = self.get_available_distance_for_fall(1);
         if available_distance > 0 {
-            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-            column_falling.move_right();
+            self.column_falling.move_right();
         }
     }
 
     pub const fn rotate_up(&mut self) {
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-        column_falling.rotate_up();
+        self.column_falling.rotate_up();
     }
 
     pub const fn rotate_down(&mut self) {
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-        column_falling.rotate_down();
+        self.column_falling.rotate_down();
     }
 
     pub fn drop(&mut self) {
         let available_distance = self.get_available_distance_for_fall(0);
         if available_distance > 0 {
-            let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-            column_falling.move_down(available_distance);
+            self.column_falling.move_down(available_distance);
         }
     }
 
@@ -117,28 +98,20 @@ impl Game {
         &self.column_next
     }
 
-    pub const fn get_falling_column(&self) -> Option<&Column> {
-        self.column_falling.as_ref()
+    pub const fn get_falling_column(&self) -> &Column {
+        &self.column_falling
     }
 
     pub const fn get_pile(&self) -> &Pile {
         &self.pile
     }
 
+    pub const fn scoring(&self) -> &Scoring {
+        &self.scoring
+    }
+
     pub const fn tick_rate(&self) -> Duration {
         self.current_tick_duration
-    }
-
-    pub const fn score(&self) -> u32 {
-        self.scoring.score()
-    }
-
-    pub const fn max_combo(&self) -> u16 {
-        self.scoring.max_combo()
-    }
-
-    pub const fn highscore(&self) -> u32 {
-        self.scoring.highscore()
     }
 
     fn create_column(rng: &mut fastrand::Rng) -> Column {
@@ -148,16 +121,13 @@ impl Game {
     fn transition_next_column_to_falling(&mut self) {
         let x = self.rng.u8(..Self::BOARD_WIDTH);
 
-        let mut column_next = std::mem::replace(&mut self.column_next, Self::create_column(&mut self.rng));
-        column_next.set_falling(x);
-
-        self.column_falling = Some(column_next);
+        let mut column_falling = std::mem::replace(&mut self.column_next, Self::create_column(&mut self.rng));
+        column_falling.set_falling(x);
+        self.column_falling = column_falling;
     }
 
     fn get_available_distance_for_fall(&self, x_offset: i8) -> i8 {
-        let column_falling = self.column_falling.as_ref().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
-        let x_as_i8 = i8::try_from(column_falling.x()).expect("`x` should fit in `i8`");
+        let x_as_i8 = i8::try_from(self.column_falling.x()).expect("`x` should fit in `i8`");
         let x = if x_offset == 0 {
             x_as_i8
         } else {
@@ -173,7 +143,7 @@ impl Game {
         let first_occupied_y = (0..Self::BOARD_HEIGHT).find(|&y| self.pile.get(x, y).is_some()).unwrap_or(Self::BOARD_HEIGHT);
         let first_occupied_y = i8::try_from(first_occupied_y).expect("Board height should fit in `i8`") - 1;
 
-        first_occupied_y - column_falling.y_bottom()
+        first_occupied_y - self.column_falling.y_bottom()
     }
 
     fn accelerate(&mut self) {
@@ -188,33 +158,37 @@ impl Game {
     // ============================================================================
     // Ticks
     // ============================================================================
+    pub fn tick(&mut self) -> bool {
+        let is_gameplay_running = match self.gameplay_state {
+            GameplayState::FallingColumn => self.tick_falling_column(),
+            GameplayState::ClearingMatches(bit_packed_points) => self.tick_clearing_matches(bit_packed_points),
+            GameplayState::ApplyingHangingGemsGravity => self.tick_applying_hanging_gems_gravity(),
+        };
+
+        if !is_gameplay_running {
+            self.write_highscore_to_file();
+            return false;
+        }
+        true
+    }
+
     fn tick_falling_column(&mut self) -> bool {
         let mut available_distance = self.get_available_distance_for_fall(0);
 
-        let column_falling = self.column_falling.as_mut().expect(Self::FALLING_COLUMN_NOT_INITIALIZED_ERROR);
-
         if available_distance > 0 {
-            column_falling.move_down(1);
+            self.column_falling.move_down(1);
             available_distance -= 1;
 
             self.scoring.break_cascade_sequence();
         }
 
         if available_distance == 0 {
-            let is_column_locked = self.pile.lock(column_falling);
-
-            let match_counts = self.pile.find_matches(&MatchingStructure::Column(column_falling));
-            if match_counts > 0 {
-                self.gameplay_state = GameplayState::ClearingMatches;
-
-                let points = all_directions_match_counts(match_counts);
-                self.scoring.add(points);
-            } else {
-                if !is_column_locked {
-                    return false;
-                }
-                self.gameplay_state = GameplayState::FallingColumn;
+            let is_column_locked = self.pile.lock(&self.column_falling);
+            if !is_column_locked {
+                return false;
             }
+
+            self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, &MatchingStructure::Column(&self.column_falling));
 
             self.transition_next_column_to_falling();
         }
@@ -222,36 +196,43 @@ impl Game {
         true
     }
 
-    fn tick_clearing_matches(&mut self) -> bool {
+    fn tick_clearing_matches(&mut self, bit_packed_points: u64) -> bool {
         self.pile.clear_matches();
 
-        self.gameplay_state = if self.pile.has_hanging_blocks() { GameplayState::ApplyingHangingBlocksGravity } else { GameplayState::FallingColumn };
+        self.scoring.add(bit_packed_points);
+        if self.scoring.is_level_increased() {
+            self.accelerate();
+            crate::dev_cyan!("Score: {:<5}    Level: {:<5}        {:?}", self.scoring.score(), self.scoring.level(), self.current_tick_duration);
+        }
+
+        self.gameplay_state = if self.pile.has_hanging_gems() { GameplayState::ApplyingHangingGemsGravity } else { GameplayState::FallingColumn };
 
         true
     }
 
-    fn tick_applying_hanging_blocks_gravity(&mut self) -> bool {
-        self.pile.apply_hanging_blocks_gravity();
+    fn tick_applying_hanging_gems_gravity(&mut self) -> bool {
+        self.pile.apply_hanging_gems_gravity();
 
-        let match_counts = self.pile.find_matches(&MatchingStructure::Pile);
-        if match_counts > 0 {
-            let points = all_directions_match_counts(match_counts);
-            self.scoring.add(points);
-
-            self.gameplay_state = GameplayState::ClearingMatches;
-        } else {
-            self.gameplay_state = GameplayState::FallingColumn;
-        }
-
-        self.scoring.count_in_accumulated_points();
-        if self.scoring.score() > 0 && self.scoring.score().is_multiple_of(u32::from(Self::ACCELERATION_SCORE_POINTS)) {
-            self.accelerate();
-        }
+        self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, &MatchingStructure::Pile);
 
         true
+    }
+
+    #[rustfmt::skip]
+    fn get_game_state_after_matches_search(pile: &mut Pile, matching_structure: &MatchingStructure) -> GameplayState {
+        let bit_packed_points = pile.find_matches(matching_structure);
+
+        if bit_packed_points > 0 {
+            GameplayState::ClearingMatches(bit_packed_points)
+        } else {
+            GameplayState::FallingColumn
+        }
     }
 }
 
+// ============================================================================
+// RNG
+// ============================================================================
 #[rustfmt::skip]
 fn create_rng() -> Result<fastrand::Rng, errors::Error> {
     let now = SystemTime::now();

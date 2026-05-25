@@ -1,11 +1,21 @@
+### 0.1.3 / 2026-05-25
+
+- Adjust leveling; refactor scoring
+- Fix missing score updating when there are no hanging gems
+- For falling columns, replace `Option` with `FallingColumnPlaceholder`
+- Extract `get_game_state_after_matches_search` function
+- Refactor
+
+// 458K (468.320)
+
 ### 0.1.2 / 2026-05-09
 
 - Binary size optimizations
   - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6.528)
   - Enable `-Zlocation-detail=none`  (-37.424)
-  - Enable `-Zfmt-debug=none` (- 9.920)
-  - Reduce inline threshold for monomorphization control (`-Cllvm-args=--inline-threshold=45`) (- 11.376)
-  - Add `stderr_warning` utility function in `main.rs` (- 224)
+  - Enable `-Zfmt-debug=none` (-9.920)
+  - Reduce inline threshold for monomorphization control (`-Cllvm-args=--inline-threshold=45`) (-11.376)
+  - Add `stderr_warning` utility function in `main.rs` (-224)
 
 // 458K (468.640)
 

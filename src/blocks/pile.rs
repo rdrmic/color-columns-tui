@@ -105,7 +105,7 @@ impl Pile {
         self.matched_positions.clear();
     }
 
-    pub fn has_hanging_blocks(&self) -> bool {
+    pub fn has_hanging_gems(&self) -> bool {
         for x in 0..self.width {
             for y in 0..self.height {
                 if self.get(x, y).is_some() {
@@ -122,7 +122,7 @@ impl Pile {
 
     /// Scans through all rows from top to bottom (`y_read_pos`).
     /// Whenever it finds a gem, it moves it down to the lowest available row (`y_write_pos`).
-    pub fn apply_hanging_blocks_gravity(&mut self) {
+    pub fn apply_hanging_gems_gravity(&mut self) {
         for x in 0..self.width {
             let mut y_write_pos = self.height.saturating_sub(1);
             for y_read_pos in (0..self.height).rev() {
