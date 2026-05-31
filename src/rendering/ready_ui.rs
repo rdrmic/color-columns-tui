@@ -5,7 +5,7 @@ use super::{LegendItem, compile_legend, draw_keys_legend};
 #[rustfmt::skip]
 const LEGEND_ITEMS: &[LegendItem] = &[
     LegendItem { key: "Enter", action: "Start" },
-    LegendItem { key: "F1", action: "How to play" },
+    LegendItem { key: "F1",    action: "How to play" },
     LegendItem { key: "Q",     action: "Quit" },
 ];
 

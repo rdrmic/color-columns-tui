@@ -20,7 +20,7 @@ const STYLE_AMETHYST: Style = Style::new().bg(Color::Magenta);
 
 macro_rules! define_block_variants {
     ($($gem:ident => $style:ident),*) => {
-        #[derive(Clone, Copy, PartialEq, Eq)]
+        #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum Gem {
             $($gem),*
         }
@@ -74,6 +74,7 @@ define_block_variants!(
 // ============================================================================
 // Block
 // ============================================================================
+#[derive(Copy, Clone)]
 pub struct Block {
     x: u8,
     y: i8,
@@ -89,7 +90,7 @@ impl Block {
 // ============================================================================
 // Widget rendering
 // ============================================================================
-impl Widget for &Block {
+impl Widget for Block {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let x = area.x + u16::from(self.x) * 2;
         let Some(y) = area.y.checked_add_signed(i16::from(self.y)) else {

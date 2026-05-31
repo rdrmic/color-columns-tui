@@ -22,6 +22,7 @@ const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
 const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
 const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
 
+#[derive(Copy, Clone)]
 pub enum Stage {
     Ready(ReadyHandler),
     Gameplay(GameplayHandler),

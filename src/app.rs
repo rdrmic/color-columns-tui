@@ -26,7 +26,10 @@ pub struct App {
 
 impl App {
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
-        Ok(Self { is_running: true, stage: Stage::Ready(ReadyHandler), game: Game::new(app_state_dir_path)? })
+        let mut game = Game::new(app_state_dir_path)?;
+        let stage = Stage::Ready(ReadyHandler::new(&mut game));
+
+        Ok(Self { is_running: true, stage, game })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), errors::Error> {
@@ -35,7 +38,7 @@ impl App {
         while self.is_running {
             terminal
                 .draw(|frame| {
-                    rendering::render(frame, &self.stage, &self.game);
+                    rendering::render(frame, self.stage, &self.game);
                 })
                 .context("Failed to draw to terminal")?;
 
@@ -53,6 +56,13 @@ impl App {
     fn tick(&mut self) {
         if let Some(next_stage) = self.stage.update(&mut self.game) {
             self.stage = next_stage;
+        }
+
+        if let Some(msg) = self.game.message_mut()
+            && matches!(self.stage, Stage::Gameplay(_))
+            && !msg.tick()
+        {
+            self.game.set_message(None);
         }
     }
 

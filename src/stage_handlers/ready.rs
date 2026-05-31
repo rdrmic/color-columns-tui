@@ -5,10 +5,21 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use crate::{
     errors::Context,
     game::Game,
+    messages::Message,
     stage_handlers::{FAILED_TO_START_GAME_ERROR, FRAME_DURATION_IDLE, GameplayHandler, InstructionsHandler, Stage, StageHandler},
 };
 
+#[derive(Copy, Clone)]
 pub struct ReadyHandler;
+
+impl ReadyHandler {
+    pub const fn new(game: &mut Game) -> Self {
+        let message = Message::new_fading("Get ready!", [0, 170, 0], 5);
+        game.set_message(Some(message));
+
+        Self
+    }
+}
 
 impl StageHandler for ReadyHandler {
     fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage> {

@@ -6,9 +6,11 @@ use std::{
 use crate::{
     blocks::{Column, FallingColumnPlaceholder, MatchingStructure, Pile},
     errors::{self, Context},
+    messages::Message,
     scoring::Scoring,
 };
 
+#[derive(Copy, Clone)]
 enum GameplayState {
     FallingColumn,
     ClearingMatches(u64),
@@ -22,6 +24,7 @@ pub struct Game {
     scoring: Scoring,
     current_tick_duration: Duration,
     gameplay_state: GameplayState,
+    message: Option<Message>,
     app_state_dir_path: Option<PathBuf>,
     rng: fastrand::Rng,
 }
@@ -46,6 +49,7 @@ impl Game {
             scoring: Scoring::new(app_state_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             gameplay_state: GameplayState::FallingColumn,
+            message: None,
             app_state_dir_path,
             rng,
         })
@@ -58,9 +62,6 @@ impl Game {
         self.gameplay_state = GameplayState::FallingColumn;
         self.transition_next_column_to_falling();
         self.rng = create_rng()?;
-
-        crate::dev_cyan!("Score: {:<5}    Level: {:<5}        {:?}", self.scoring.score(), self.scoring.level(), self.current_tick_duration);
-        crate::dev_gray!("-----------------------------------------");
 
         Ok(())
     }
@@ -94,24 +95,36 @@ impl Game {
         }
     }
 
-    pub const fn get_next_column(&self) -> &Column {
-        &self.column_next
+    pub const fn get_next_column(&self) -> Column {
+        self.column_next
     }
 
-    pub const fn get_falling_column(&self) -> &Column {
-        &self.column_falling
+    pub const fn get_falling_column(&self) -> Column {
+        self.column_falling
     }
 
     pub const fn get_pile(&self) -> &Pile {
         &self.pile
     }
 
-    pub const fn scoring(&self) -> &Scoring {
-        &self.scoring
+    pub const fn scoring(&self) -> Scoring {
+        self.scoring
     }
 
     pub const fn tick_rate(&self) -> Duration {
         self.current_tick_duration
+    }
+
+    pub const fn message(&self) -> Option<&Message> {
+        self.message.as_ref()
+    }
+
+    pub const fn message_mut(&mut self) -> Option<&mut Message> {
+        self.message.as_mut()
+    }
+
+    pub const fn set_message(&mut self, msg: Option<Message>) {
+        self.message = msg;
     }
 
     fn create_column(rng: &mut fastrand::Rng) -> Column {
@@ -183,12 +196,12 @@ impl Game {
         }
 
         if available_distance == 0 {
-            let is_column_locked = self.pile.lock(&self.column_falling);
+            let is_column_locked = self.pile.lock(self.column_falling);
             if !is_column_locked {
                 return false;
             }
 
-            self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, &MatchingStructure::Column(&self.column_falling));
+            self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, MatchingStructure::Column(&self.column_falling));
 
             self.transition_next_column_to_falling();
         }
@@ -201,8 +214,10 @@ impl Game {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
+            let message = Message::new_fading("Level up!", [255, 135, 0], 1);
+            self.set_message(Some(message));
+
             self.accelerate();
-            crate::dev_cyan!("Score: {:<5}    Level: {:<5}        {:?}", self.scoring.score(), self.scoring.level(), self.current_tick_duration);
         }
 
         self.gameplay_state = if self.pile.has_hanging_gems() { GameplayState::ApplyingHangingGemsGravity } else { GameplayState::FallingColumn };
@@ -213,13 +228,13 @@ impl Game {
     fn tick_applying_hanging_gems_gravity(&mut self) -> bool {
         self.pile.apply_hanging_gems_gravity();
 
-        self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, &MatchingStructure::Pile);
+        self.gameplay_state = Self::get_game_state_after_matches_search(&mut self.pile, MatchingStructure::Pile);
 
         true
     }
 
     #[rustfmt::skip]
-    fn get_game_state_after_matches_search(pile: &mut Pile, matching_structure: &MatchingStructure) -> GameplayState {
+    fn get_game_state_after_matches_search(pile: &mut Pile, matching_structure: MatchingStructure) -> GameplayState {
         let bit_packed_points = pile.find_matches(matching_structure);
 
         if bit_packed_points > 0 {

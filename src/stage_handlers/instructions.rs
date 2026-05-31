@@ -7,6 +7,7 @@ use crate::{
     stage_handlers::{FRAME_DURATION_IDLE, ReadyHandler, Stage, StageHandler},
 };
 
+#[derive(Copy, Clone)]
 pub struct InstructionsHandler;
 
 impl StageHandler for InstructionsHandler {

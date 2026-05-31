@@ -5,6 +5,7 @@ use std::{
 
 use crate::{blocks::unpack_matches_points, errors};
 
+#[derive(Copy, Clone)]
 pub struct Scoring {
     level: u32,
     score: u32,

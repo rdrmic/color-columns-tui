@@ -1,8 +1,13 @@
 #![allow(unused)]
 #![cfg(feature = "dev-console")]
-use std::collections::VecDeque;
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{LazyLock, Mutex, MutexGuard};
+use std::{
+    borrow::Cow,
+    collections::VecDeque,
+    sync::{
+        LazyLock, Mutex, MutexGuard,
+        mpsc::{self, Receiver, Sender},
+    },
+};
 
 use ratatui::{
     Frame,
@@ -112,7 +117,7 @@ fn handle_scrolling_down(console: &mut DevConsoleState) {
 // Channeling Log Messages
 // ============================================================================
 struct LogMessage {
-    msg: String,
+    msg: Cow<'static, str>,
     color: PrintColor,
 }
 
@@ -123,7 +128,7 @@ static LOG_CHANNEL: LazyLock<(Sender<LogMessage>, Mutex<Receiver<LogMessage>>)> 
 });
 
 /// Sends message to the log channel (used by `dev_*!` macros in mod.rs)
-pub fn send_log_message(msg: String, color: PrintColor) {
+pub fn send_log_message(msg: Cow<'static, str>, color: PrintColor) {
     let (tx, _) = &*LOG_CHANNEL;
     let _ = tx.send(LogMessage { msg, color });
 }
@@ -149,6 +154,7 @@ const STYLE_COLOR_CYAN: Style = Style::new().fg(Color::Cyan);
 const STYLE_COLOR_YELLOW: Style = Style::new().fg(Color::Yellow);
 const STYLE_COLOR_RED: Style = Style::new().fg(Color::Red);
 
+#[derive(Copy, Clone)]
 pub enum PrintColor {
     Gray,
     Cyan,

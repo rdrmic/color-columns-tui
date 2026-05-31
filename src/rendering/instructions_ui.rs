@@ -8,7 +8,7 @@ use super::{LegendItem, compile_legend, draw_keys_legend};
 
 #[rustfmt::skip]
 const LEGEND_ITEMS: &[LegendItem] = &[
-    LegendItem { key: "Enter", action: "Return to game" },
+    LegendItem { key: "Enter", action: "Back to game" },
     LegendItem { key: "Q",     action: "Quit" },
 ];
 
@@ -27,10 +27,10 @@ pub(super) fn draw_instructions(frame: &mut Frame, area: Rect) {
         🚀 Sequential, cascading matches earn huge bonuses.
 
         --
-        ⚙  Created by Rade Drmic
+        🔧 Created by Rade Drmic
         📬 rdrmic@gmail.com
     ";
 
-    let instructions = Paragraph::new(instructions).block(Block::default().padding(Padding::new(1, 1, 1, 0))).wrap(Wrap { trim: true });
+    let instructions = Paragraph::new(instructions).block(Block::default().padding(Padding::horizontal(2))).wrap(Wrap { trim: true });
     frame.render_widget(instructions, area);
 }

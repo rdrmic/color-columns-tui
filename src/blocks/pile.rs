@@ -21,7 +21,7 @@ impl Pile {
         self.matched_positions.clear();
     }
 
-    pub fn lock(&mut self, column: &Column) -> bool {
+    pub fn lock(&mut self, column: Column) -> bool {
         for (gem_x, gem_y, gem) in column.gems() {
             if let Ok(gem_y) = u8::try_from(gem_y) {
                 let idx = self.calculate_grid_idx(gem_x, gem_y);
@@ -47,7 +47,7 @@ impl Pile {
     // ============================================================================
     // Matches
     // ============================================================================
-    pub fn find_matches(&mut self, structure: &MatchingStructure) -> u64 {
+    pub fn find_matches(&mut self, structure: MatchingStructure) -> u64 {
         let mut matches_counts_as_packed_bits = 0;
         let mut outer_shift_offset = 36;
 

@@ -7,6 +7,7 @@ use crate::{
     stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, PausedHandler, Stage, StageHandler},
 };
 
+#[derive(Copy, Clone)]
 pub struct GameplayHandler {
     last_tick: Instant, // tracks the last time the block moved down (gravity)
 }
@@ -18,7 +19,7 @@ impl GameplayHandler {
 
     fn try_updating_tick(&mut self, game: &mut Game, next_tick: Instant) -> Option<Stage> {
         if !game.tick() {
-            return Some(Stage::GameOver(GameOverHandler));
+            return Some(Stage::GameOver(GameOverHandler::new(game)));
         }
         self.last_tick = next_tick;
         None
@@ -43,7 +44,7 @@ impl StageHandler for GameplayHandler {
                     return Some(gameover_stage);
                 }
             }
-            KeyCode::Esc => return Some(Stage::Paused(PausedHandler::new())),
+            KeyCode::Esc => return Some(Stage::Paused(PausedHandler::new(game))),
             _ => (),
         }
         None

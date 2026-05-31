@@ -3,6 +3,7 @@ mod blocks;
 mod errors;
 mod game;
 mod logging;
+mod messages;
 mod rendering;
 mod scoring;
 mod stage_handlers;

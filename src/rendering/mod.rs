@@ -11,6 +11,7 @@ use ratatui::{
     text::{Line, Text},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
+use ratatui::{layout::HorizontalAlignment, widgets::Padding};
 
 #[cfg(feature = "dev-console")]
 use crate::logging;
@@ -21,21 +22,17 @@ use crate::{
     stage_handlers::Stage,
 };
 
-// TODO calculate terminal window minimum sizes from other constants
 #[cfg(feature = "dev-console")]
 pub const MIN_WINDOW_WIDTH: u16 = 160;
 #[cfg(not(feature = "dev-console"))]
 pub const MIN_WINDOW_WIDTH: u16 = 29;
 
-pub const MIN_WINDOW_HEIGHT: u16 = 29;
-
-const BOARD_WIDTH: u16 = Game::BOARD_WIDTH as u16 * 2 + 2;
-const BOARD_HEIGHT: u16 = Game::BOARD_HEIGHT as u16 + 2;
+pub const MIN_WINDOW_HEIGHT: u16 = 27;
 
 // ============================================================================
 // Entry point for rendering
 // ============================================================================
-pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
+pub fn render(frame: &mut Frame, stage: Stage, game: &Game) {
     let frame_area = frame.area();
 
     if is_terminal_window_too_small(frame_area) {
@@ -50,19 +47,21 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &Game) {
     } else {
         draw_shared_areas(frame, &layout_areas, game, stage);
     }
-    draw_footer(frame, layout_areas.footer, stage);
+    draw_footer(frame, layout_areas.key_legend, stage);
 
     #[cfg(feature = "dev-console")]
     logging::dev_console::draw(frame, layout_areas.dev_console);
 }
 
-fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: &Stage) {
+fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: Stage) {
+    draw_level(frame, layout_areas.level, game);
+    draw_message(frame, layout_areas.message, game);
     draw_next_column(frame, layout_areas.next_column, game, stage);
     draw_board(frame, layout_areas.board, game, stage);
     draw_stats(frame, layout_areas.stats, game);
 }
 
-fn draw_footer(frame: &mut Frame, area: Rect, stage: &Stage) {
+fn draw_footer(frame: &mut Frame, area: Rect, stage: Stage) {
     match stage {
         Stage::Ready(_) => ready_ui::draw_footer(frame, area),
         Stage::Gameplay(_) => gameplay_ui::draw_footer(frame, area),
@@ -90,9 +89,9 @@ fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
     ];
     frame.render_widget(
         Paragraph::new(msg)
-            .alignment(Alignment::Center)
             .style(Style::default().fg(Color::Red))
             .block(Block::bordered().border_style(Style::default().fg(Color::Indexed(240))))
+            .alignment(Alignment::Center)
             .wrap(Wrap { trim: true }),
         area,
     );
@@ -102,58 +101,86 @@ fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
 // Layout areas
 // ============================================================================
 struct LayoutAreas {
+    level: Rect,
+    message: Rect,
     next_column: Rect,
     stats: Rect,
     board: Rect,
     instructions: Rect,
-    footer: Rect,
+    key_legend: Rect,
     #[cfg(feature = "dev-console")]
     dev_console: Rect,
 }
 
 fn get_layout_areas(area: Rect) -> LayoutAreas {
     #[cfg(feature = "dev-console")]
-    let horizontal_constraints = [Constraint::Length(BOARD_WIDTH + 15), Constraint::Length(17), Constraint::Min(0)];
+    let horizontal_constraints = [Constraint::Length(29), Constraint::Length(13), Constraint::Min(0)];
     #[cfg(not(feature = "dev-console"))]
-    let horizontal_constraints = [Constraint::Length(BOARD_WIDTH + 15)];
+    let horizontal_constraints = [Constraint::Length(29)];
 
     let main_horizontal_layout = Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(area);
-    let game_area = main_horizontal_layout[0];
+    let entire_area = main_horizontal_layout[0];
 
-    let game_vertical_layout =
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(19), Constraint::Length(1), Constraint::Min(0)]).split(game_area);
-    let game_area = game_vertical_layout[0];
-    let footer_area = game_vertical_layout[2];
+    let main_vertical_layout =
+        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(18), Constraint::Min(0)]).margin(1).spacing(1).split(entire_area);
+    let entire_game_area = main_vertical_layout[0];
+    let key_legend_area = main_vertical_layout[1];
 
-    let instructions_layout = Layout::default().direction(Direction::Vertical).constraints([Constraint::Min(0)]).split(game_area);
-    let instructions_area = instructions_layout[0];
+    let game_vertical_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(2), Constraint::Min(0)])
+        .split(entire_game_area);
+    let level_area = game_vertical_layout[0];
+    let message_area = game_vertical_layout[1];
+    let game_area = game_vertical_layout[2];
 
-    let game_horizontal_layout =
-        Layout::default().direction(Direction::Horizontal).constraints([Constraint::Length(14), Constraint::Length(BOARD_WIDTH)]).split(game_area);
+    let game_horizontal_layout = Layout::default().direction(Direction::Horizontal).constraints([Constraint::Length(13), Constraint::Min(0)]).split(game_area);
 
     let left_side_area = game_horizontal_layout[0];
     let board_area = game_horizontal_layout[1];
 
     let left_side_vertical_layout =
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(5), Constraint::Length(4), Constraint::Min(0)]).split(left_side_area);
+        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(1), Constraint::Length(3), Constraint::Min(0)]).split(left_side_area);
     let next_column_area = left_side_vertical_layout[1];
     let stats_area = left_side_vertical_layout[2];
 
     LayoutAreas {
+        level: level_area,
+        message: message_area,
         next_column: next_column_area,
         stats: stats_area,
         board: board_area,
-        instructions: instructions_area,
-        footer: footer_area,
+        instructions: entire_area,
+        key_legend: key_legend_area,
         #[cfg(feature = "dev-console")]
         dev_console: main_horizontal_layout[2],
     }
 }
 
 // ============================================================================
-// Game: left side (next column and stats) and board
+// Level and user messages
 // ============================================================================
-fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
+fn draw_level(frame: &mut Frame, area: Rect, game: &Game) {
+    let level = Paragraph::new(format!("LEVEL {}", game.scoring().level()))
+        .block(Block::default().padding(Padding::left(1)).style(Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC))); // FIXME systematize colors
+    frame.render_widget(level, area);
+}
+
+pub fn draw_message(frame: &mut Frame, area: Rect, game: &Game) {
+    let Some(msg) = game.message() else {
+        return;
+    };
+
+    let message = Paragraph::new(msg.text())
+        .alignment(HorizontalAlignment::Right)
+        .block(Block::default().padding(Padding::horizontal(1)).style(Style::default().fg(msg.color()).add_modifier(Modifier::BOLD | Modifier::ITALIC)));
+    frame.render_widget(message, area);
+}
+
+// ============================================================================
+// Left side (next column and stats) and game board
+// ============================================================================
+fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
     let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
 
     if let Stage::Paused(pause_handler) = stage {
@@ -162,52 +189,38 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
         for (x, y, _) in game.get_next_column().gems() {
             let seed = seed_for_randomizing_next_column_blocks(flicker_tick, x, y);
             let flickered_gem = Gem::random_for_pause(seed);
-            frame.render_widget(&blocks::Block::new(0, y, flickered_gem), right_aligned_area);
+            frame.render_widget(blocks::Block::new(0, y, flickered_gem), right_aligned_area);
         }
     } else {
         frame.render_widget(game.get_next_column(), right_aligned_area);
     }
 }
 
-// TODO
 fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
     let value_style = Style::default().fg(Color::Indexed(152));
 
     #[rustfmt::skip]
     let stats = [
-        ("LEVEL",       game.scoring().level(),                   Color::Yellow),
         ("SCORE",       game.scoring().score(),                   Color::Green),
         ("MAX COMBO",   u32::from(game.scoring().max_combo()),    Color::Magenta),
         ("HIGHSCORE",   game.scoring().highscore(),               Color::Red),
     ];
 
-    let mut lines = Vec::with_capacity(stats.len() * 3 - 1);
-
-    // for (i, (label, value, color)) in stats.into_iter().enumerate() {
-    //     if i > 0 {
-    //         lines.push(Line::default());
-    //     }
-    //     lines.push(Line::from(label).style(Style::default().fg(color).add_modifier(Modifier::BOLD)));
-    //     lines.push(Line::from(value.to_string()).style(value_style));
-    // }
-
-    for (label, value, color) in stats {
-        lines.push(Line::from(label).style(Style::default().fg(color).add_modifier(Modifier::BOLD)));
+    let lines = stats.into_iter().fold(Vec::with_capacity(stats.len() * 3), |mut lines, (label, value, color)| {
+        lines.push(Line::default());
+        lines.push(Line::from(label).style(Style::default().fg(color).bold()));
         lines.push(Line::from(value.to_string()).style(value_style));
-    }
+        lines
+    });
 
-    let stats = Paragraph::new(lines).block(Block::default().padding(ratatui::widgets::Padding::new(2, 2, 1, 0)));
+    let stats = Paragraph::new(lines).block(Block::default().padding(ratatui::widgets::Padding::new(1, 1, 1, 0)));
     frame.render_widget(stats, area);
 }
 
-fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
-    let board_vertical_layout =
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(4), Constraint::Max(BOARD_HEIGHT)]).split(area);
-    let target_area = board_vertical_layout[1];
+fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
+    draw_board_border(frame, area);
 
-    draw_board_border(frame, target_area);
-
-    let board_inner_area = Rect { x: target_area.x + 1, y: target_area.y + 1, width: target_area.width - 2, height: target_area.height - 2 };
+    let board_inner_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
 
     if let Stage::Paused(pause_handler) = stage {
         let flicker_tick = pause_handler.flicker_tick();
@@ -217,7 +230,7 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
             if y >= 0 {
                 let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, x, y);
                 let flickered_gem = Gem::random_for_pause(seed);
-                frame.render_widget(&blocks::Block::new(x, y, flickered_gem), board_inner_area);
+                frame.render_widget(blocks::Block::new(x, y, flickered_gem), board_inner_area);
             }
         }
 
@@ -228,7 +241,7 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: &Stage) {
                 if game.get_pile().get(x, y).is_some() {
                     let seed = seed_for_randomizing_pile_blocks(flicker_tick, x, y);
                     let flickered_gem = Gem::random_for_pause(seed);
-                    frame.render_widget(&blocks::Block::new(x, y_as_i8, flickered_gem), board_inner_area);
+                    frame.render_widget(blocks::Block::new(x, y_as_i8, flickered_gem), board_inner_area);
                 }
             }
         }
@@ -272,9 +285,10 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 // ============================================================================
 // Keys legend
 // ============================================================================
-const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).add_modifier(Modifier::BOLD);
+const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).bold();
 const STYLE_ACTIONS: Style = Style::new().fg(Color::Gray);
 
+#[derive(Copy, Clone)]
 struct LegendItem {
     key: &'static str,
     action: &'static str,
@@ -301,7 +315,7 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)
     let legend_block = Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::Indexed(245)));
     frame.render_widget(&legend_block, area);
 
-    let horizontal_layout = Layout::horizontal([Constraint::Length(1), Constraint::Length(14), Constraint::Min(0)]).split(legend_block.inner(area));
+    let horizontal_layout = Layout::horizontal([Constraint::Length(1), Constraint::Length(13), Constraint::Min(0)]).split(legend_block.inner(area));
     let keys_area = horizontal_layout[1];
     let actions_area = horizontal_layout[2];
 

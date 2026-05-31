@@ -13,11 +13,13 @@ pub use pile::Pile;
 const MIN_CONSECUTIVE_GEMS_TO_MATCH: usize = 3;
 const MAX_MATCHES_PER_DIRECTION: usize = 5;
 
+#[derive(Copy, Clone)]
 pub enum MatchingStructure<'a> {
     Column(&'a Column),
     Pile,
 }
 
+#[derive(Copy, Clone)]
 struct Direction;
 
 impl Direction {

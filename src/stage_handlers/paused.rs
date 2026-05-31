@@ -4,17 +4,22 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game::Game,
+    messages::Message,
     stage_handlers::{FRAME_DURATION_PAUSED, GameplayHandler, Stage, StageHandler},
 };
 
 const FLICKER_DURATION: u64 = FRAME_DURATION_PAUSED.as_millis() as u64;
 
+#[derive(Copy, Clone)]
 pub struct PausedHandler {
     start_time: Instant,
 }
 
 impl PausedHandler {
-    pub fn new() -> Self {
+    pub fn new(game: &mut Game) -> Self {
+        let message = Message::new_permanent("Paused...", [170, 170, 170]);
+        game.set_message(Some(message));
+
         Self { start_time: Instant::now() }
     }
 
@@ -24,8 +29,9 @@ impl PausedHandler {
 }
 
 impl StageHandler for PausedHandler {
-    fn handle_key_pressed_event(&mut self, _game: &mut Game, key_event: KeyEvent) -> Option<Stage> {
+    fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage> {
         if key_event.code == KeyCode::Enter {
+            game.set_message(None);
             return Some(Stage::Gameplay(GameplayHandler::new()));
         }
         None

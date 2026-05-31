@@ -1,3 +1,12 @@
+### 0.1.4 / 2026-05-31
+
+- Reorganize layout to show level and in-game messages
+- In-game messages
+- Optimizing small enums and structs by making them `Copy`-able
+- Make `dev_console` take string literals AND strings to be formatted
+
+// 460K (470.816)
+
 ### 0.1.3 / 2026-05-25
 
 - Adjust leveling; refactor scoring

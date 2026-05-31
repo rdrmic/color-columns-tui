@@ -2,6 +2,7 @@ use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 use crate::blocks::{Block, Gem};
 
+#[derive(Copy, Clone)]
 pub struct Column {
     x: u8,
     y: i8,
@@ -21,7 +22,7 @@ impl Column {
     }
 
     #[rustfmt::skip]
-    pub const fn gems(&self) -> [(u8, i8, Gem); 3] {
+    pub const fn gems(self) -> [(u8, i8, Gem); 3] {
         [
             (self.x, self.y,     self.gems[0]),
             (self.x, self.y + 1, self.gems[1]),
@@ -29,15 +30,15 @@ impl Column {
         ]
     }
 
-    pub const fn next_y_positions(&self) -> [i8; 3] {
+    pub const fn next_y_positions(self) -> [i8; 3] {
         [self.y + 1, self.y + 2, self.y + 3]
     }
 
-    pub const fn y_bottom(&self) -> i8 {
+    pub const fn y_bottom(self) -> i8 {
         self.y + 2
     }
 
-    pub const fn x(&self) -> u8 {
+    pub const fn x(self) -> u8 {
         self.x
     }
 
@@ -78,7 +79,7 @@ impl FallingColumnPlaceholder for Column {
 // ============================================================================
 // Widget rendering
 // ============================================================================
-impl Widget for &Column {
+impl Widget for Column {
     fn render(self, area: Rect, buf: &mut Buffer) {
         for (x, y, gem) in self.gems() {
             if self.is_falling && y < 0 {
