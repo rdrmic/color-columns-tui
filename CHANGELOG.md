@@ -1,3 +1,15 @@
+### 0.1.5 / 2026-06-01
+
+- Clean up TODOs and FIXMEs
+- Make `Message` struct `Copy`-able
+- Improve messages' fading out
+- Bump Rust: 1.95.0 -> 1.96.0
+- `cargo update`
+- Binary size optimizations:
+  - Use toolchain `nightly-2026-06-01` (-1.712)
+
+// 459K (469.120)
+
 ### 0.1.4 / 2026-05-31
 
 - Reorganize layout to show level and in-game messages
@@ -19,7 +31,7 @@
 
 ### 0.1.2 / 2026-05-09
 
-- Binary size optimizations
+- Binary size optimizations:
   - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6.528)
   - Enable `-Zlocation-detail=none`  (-37.424)
   - Enable `-Zfmt-debug=none` (-9.920)
@@ -33,7 +45,7 @@
 - Skip tick if there aren't hanging blocks
 - Log random seed for reproducibility
 - Simplify `GameOverHandler`
-- Binary size optimizations
+- Binary size optimizations:
   - Render key legends dynamically
   - Remove all `#[derive(Debug)]` attributes
   - Implement `Debug` for `Error` in `errors.rs`
@@ -70,7 +82,7 @@
 
 ### 0.0.13 / 2026-04-28
 
-- Binary size optimizations
+- Binary size optimizations:
     - Change `lto = true` to `lto = "fat"`
     - Add `features = ["release_max_level_off"]` to `log`
     - Replace `env_logger` with a simple custom logger
@@ -97,10 +109,10 @@
 
 ## 0.0.10 / 2026-04-22
 
-- Bump Rust: 1.94.1 -> 1.95.0
 - Show next column
 - Update timings because of the next column
 - Pile up columns until the `Gameover` stage
+- Bump Rust: 1.94.1 -> 1.95.0
 
 // 627K (641.376)
 
@@ -148,12 +160,13 @@
 
 ## 0.0.4 / 2026-04-06
 
-- opt-level = "z"
 - Rearrange and clean up `app.rs` as a preparation for MVC
 - Improve usage of "dev-console" feature
 - Improve `dev_console.rs` by introducing `std::sync::mpsc` for log messages
 - Make crate-wide available macros for colored logging to dev console
 - Greatly improve `main.rs`: robustness, flexibility regarding non-essential conditions for app starting, error handling, panic protection, terminal restoration, logging
+- Binary size optimizations:
+  - opt-level = "z"
 
 // 613K (627.624)
 
@@ -180,8 +193,9 @@
 - Add lints rules
 - Add basic `main.rs`/`app.rs` scaffolding and main loop
 - Add logger
-- Shave off unnecessary dependencies and/or their features
-- Replace `color-eyre` with`anyhow`
+- Binary size optimizations:
+  - Shave off unnecessary dependencies and/or their features
+  - Replace `color-eyre` with`anyhow`
 
 // 602K (615.592)
 

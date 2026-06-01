@@ -162,7 +162,7 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 // ============================================================================
 fn draw_level(frame: &mut Frame, area: Rect, game: &Game) {
     let level = Paragraph::new(format!("LEVEL {}", game.scoring().level()))
-        .block(Block::default().padding(Padding::left(1)).style(Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC))); // FIXME systematize colors
+        .block(Block::default().padding(Padding::left(1)).style(Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC)));
     frame.render_widget(level, area);
 }
 

@@ -8,9 +8,7 @@ use ratatui::{
 // ============================================================================
 // Block Variants (Gems)
 // ============================================================================
-// TODO Change the colors
-// TODO Rename `Gem`
-// FIXME Use `Color::Red` style or `Color::Indexed(0..255)` throughout the app
+// TODO Unify / systematize colors throughout the app
 const STYLE_RUBY: Style = Style::new().bg(Color::Red);
 const STYLE_AMBER: Style = Style::new().bg(Color::Rgb(255, 165, 0));
 const STYLE_TOPAZ: Style = Style::new().bg(Color::Yellow);

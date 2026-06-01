@@ -115,8 +115,8 @@ impl Game {
         self.current_tick_duration
     }
 
-    pub const fn message(&self) -> Option<&Message> {
-        self.message.as_ref()
+    pub const fn message(&self) -> Option<Message> {
+        self.message
     }
 
     pub const fn message_mut(&mut self) -> Option<&mut Message> {
@@ -214,7 +214,7 @@ impl Game {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading("Level up!", [255, 135, 0], 1);
+            let message = Message::new_fading("Level up!", [255, 135, 0], 21, 2);
             self.set_message(Some(message));
 
             self.accelerate();

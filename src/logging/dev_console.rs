@@ -93,7 +93,6 @@ fn acquire_console_mutex() -> MutexGuard<'static, DevConsoleState> {
 }
 
 /// Calculate the actual bottom
-// TODO verify and rename
 fn calculate_max_scroll_possible(console: &DevConsoleState) -> u16 {
     let log_len = console.lines.len() as u16;
     log_len.saturating_sub(console.last_known_inner_height)

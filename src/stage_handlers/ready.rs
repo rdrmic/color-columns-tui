@@ -14,7 +14,7 @@ pub struct ReadyHandler;
 
 impl ReadyHandler {
     pub const fn new(game: &mut Game) -> Self {
-        let message = Message::new_fading("Get ready!", [0, 170, 0], 5);
+        let message = Message::new_fading("Get ready!", [0, 170, 0], 1, 2);
         game.set_message(Some(message));
 
         Self

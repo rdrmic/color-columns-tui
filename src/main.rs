@@ -76,16 +76,14 @@ fn check_terminal_size() -> Result<(), errors::Error> {
     let (columns, rows) = crossterm::terminal::size().context("Failed to get terminal size")?;
     log::info!("Terminal size (columns x rows): {columns} x {rows}");
 
-    // TODO check if minimum num of (columns x rows) is satisfied   // current maximized: 236 x 59
-    let min_columns = rendering::MIN_WINDOW_WIDTH;
-    if columns < min_columns {
-        log::warn!("Terminal width must be at least {min_columns} columns (current: {columns})");
+    // An effective terminal window size check (with a message to the user) is being dynamically performed in src/rendering/mod.rs
+    if columns < rendering::MIN_WINDOW_WIDTH {
+        log::warn!("Terminal width must be at least {} columns (current: {})", rendering::MIN_WINDOW_WIDTH, columns);
+    }
+    if rows < rendering::MIN_WINDOW_HEIGHT {
+        log::warn!("Terminal height must be at least {} rows (current: {})", rendering::MIN_WINDOW_HEIGHT, rows);
     }
 
-    let min_rows = rendering::MIN_WINDOW_HEIGHT;
-    if rows < min_rows {
-        log::warn!("Terminal height must be at least {min_rows} rows (current: {rows})");
-    }
     Ok(())
 }
 
