@@ -65,7 +65,7 @@ pub mod num_matches_unpacking {
         ]
     }
 
-    /// Unpack all 4 maximum matches points for all 4 directions into: [direction][points]
+    /// Unpack all 4 maximum matches points for all 4 directions into: [direction][points].
     #[inline]
     pub const fn unpack_matches_points(packed_points: u64) -> [[u8; 4]; 4] {
         [

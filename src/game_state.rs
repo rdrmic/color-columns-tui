@@ -10,14 +10,13 @@ use crate::{
     scoring::Scoring,
 };
 
-#[derive(Copy, Clone)]
 enum GameplayState {
     FallingColumn,
     ClearingMatches(u64),
     ApplyingHangingGemsGravity,
 }
 
-pub struct Game {
+pub struct GameState {
     column_next: Column,
     column_falling: Column,
     pile: Pile,
@@ -29,12 +28,12 @@ pub struct Game {
     rng: fastrand::Rng,
 }
 
-impl Game {
+impl GameState {
     pub const BOARD_WIDTH: u8 = 6;
     pub const BOARD_HEIGHT: u8 = 13;
 
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
-    const MIN_TICK_DURATION: Duration = Duration::from_millis(100);
+    const MIN_TICK_DURATION: Duration = Duration::from_millis(100); // TODO determine it accurately
     const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
 
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
@@ -107,16 +106,16 @@ impl Game {
         &self.pile
     }
 
-    pub const fn scoring(&self) -> Scoring {
-        self.scoring
+    pub const fn scoring(&self) -> &Scoring {
+        &self.scoring
     }
 
     pub const fn tick_rate(&self) -> Duration {
         self.current_tick_duration
     }
 
-    pub const fn message(&self) -> Option<Message> {
-        self.message
+    pub const fn message(&self) -> Option<&Message> {
+        self.message.as_ref()
     }
 
     pub const fn message_mut(&mut self) -> Option<&mut Message> {
@@ -214,7 +213,7 @@ impl Game {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading("Level up!", [255, 135, 0], 21, 2);
+            let message = Message::new_fading("Level up!", [255, 135, 0], 25, 5);
             self.set_message(Some(message));
 
             self.accelerate();

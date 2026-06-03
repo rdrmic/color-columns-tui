@@ -70,7 +70,7 @@ pub fn draw(frame: &mut Frame, area: Rect) {
         flush_messages_as_lines(&mut console);
 
         let block = Block::bordered()
-            .title(format!(" Navigate history ({MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line; resets auto-scroll) "))
+            .title(format!(" Navigate history (last {MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line; resets auto-scroll) "))
             .style(Style::default().fg(Color::Indexed(40)))
             .padding(Padding::horizontal(1));
 
@@ -92,7 +92,7 @@ fn acquire_console_mutex() -> MutexGuard<'static, DevConsoleState> {
     DEV_CONSOLE.lock().expect("Acquiring Mutex failed")
 }
 
-/// Calculate the actual bottom
+/// Calculate the actual bottom.
 fn calculate_max_scroll_possible(console: &DevConsoleState) -> u16 {
     let log_len = console.lines.len() as u16;
     log_len.saturating_sub(console.last_known_inner_height)
@@ -120,13 +120,13 @@ struct LogMessage {
     color: PrintColor,
 }
 
-/// Channel to decouple log messages' sending from processing
+/// Channel to decouple log messages' sending from processing.
 static LOG_CHANNEL: LazyLock<(Sender<LogMessage>, Mutex<Receiver<LogMessage>>)> = LazyLock::new(|| {
     let (tx, rx) = mpsc::channel();
     (tx, Mutex::new(rx))
 });
 
-/// Sends message to the log channel (used by `dev_*!` macros in mod.rs)
+/// Sends message to the log channel (used by `dev_*!` macros in mod.rs).
 pub fn send_log_message(msg: Cow<'static, str>, color: PrintColor) {
     let (tx, _) = &*LOG_CHANNEL;
     let _ = tx.send(LogMessage { msg, color });

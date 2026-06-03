@@ -5,9 +5,8 @@ use std::{
 
 use crate::{blocks::unpack_matches_points, errors};
 
-#[derive(Copy, Clone)]
 pub struct Scoring {
-    level: u32,
+    level: u16,
     score: u32,
     max_combo: u16,
     highscore: u32,
@@ -59,7 +58,7 @@ impl Scoring {
         }
     }
 
-    pub const fn level(&self) -> u32 {
+    pub const fn level(&self) -> u16 {
         self.level
     }
 
@@ -101,14 +100,14 @@ impl Scoring {
         }
     }
 
-    const fn calculate_level(score: u32) -> u32 {
+    const fn calculate_level(score: u32) -> u16 {
         match score {
             0..50 => 1,
             50..150 => 2,
             150..300 => 3,
             300..500 => 4,
             // For scores 500 and above, every 250 points is a new level
-            _ => 5 + ((score - 500) / 250),
+            _ => 5 + ((score - 500) / 250) as u16,
         }
     }
 

@@ -1,6 +1,5 @@
 use ratatui::style::Color;
 
-#[derive(Copy, Clone)]
 pub struct Message {
     text: &'static str,
     rgb: [u8; 3],

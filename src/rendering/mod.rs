@@ -18,7 +18,7 @@ use crate::logging;
 
 use crate::{
     blocks::{self, Gem},
-    game::Game,
+    game_state::GameState,
     stage_handlers::Stage,
 };
 
@@ -32,7 +32,7 @@ pub const MIN_WINDOW_HEIGHT: u16 = 27;
 // ============================================================================
 // Entry point for rendering
 // ============================================================================
-pub fn render(frame: &mut Frame, stage: Stage, game: &Game) {
+pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
     let frame_area = frame.area();
 
     if is_terminal_window_too_small(frame_area) {
@@ -53,15 +53,15 @@ pub fn render(frame: &mut Frame, stage: Stage, game: &Game) {
     logging::dev_console::draw(frame, layout_areas.dev_console);
 }
 
-fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &Game, stage: Stage) {
-    draw_level(frame, layout_areas.level, game);
+fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &GameState, stage: &Stage) {
+    draw_level(frame, layout_areas.level, game, stage);
     draw_message(frame, layout_areas.message, game);
     draw_next_column(frame, layout_areas.next_column, game, stage);
+    draw_stats(frame, layout_areas.stats, game, stage);
     draw_board(frame, layout_areas.board, game, stage);
-    draw_stats(frame, layout_areas.stats, game);
 }
 
-fn draw_footer(frame: &mut Frame, area: Rect, stage: Stage) {
+fn draw_footer(frame: &mut Frame, area: Rect, stage: &Stage) {
     match stage {
         Stage::Ready(_) => ready_ui::draw_footer(frame, area),
         Stage::Gameplay(_) => gameplay_ui::draw_footer(frame, area),
@@ -160,13 +160,20 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 // ============================================================================
 // Level and user messages
 // ============================================================================
-fn draw_level(frame: &mut Frame, area: Rect, game: &Game) {
-    let level = Paragraph::new(format!("LEVEL {}", game.scoring().level()))
-        .block(Block::default().padding(Padding::left(1)).style(Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC)));
+fn draw_level(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
+    let style = if let Stage::Gameplay(gameplay_handler) = stage
+        && gameplay_handler.blinking_labels().has_level_blinked()
+    {
+        Style::default().fg(Color::Black)
+    } else {
+        Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC)
+    };
+
+    let level = Paragraph::new(format!("LEVEL {}", game.scoring().level())).block(Block::default().padding(Padding::left(1)).style(style));
     frame.render_widget(level, area);
 }
 
-pub fn draw_message(frame: &mut Frame, area: Rect, game: &Game) {
+pub fn draw_message(frame: &mut Frame, area: Rect, game: &GameState) {
     let Some(msg) = game.message() else {
         return;
     };
@@ -180,7 +187,7 @@ pub fn draw_message(frame: &mut Frame, area: Rect, game: &Game) {
 // ============================================================================
 // Left side (next column and stats) and game board
 // ============================================================================
-fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
+fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
 
     if let Stage::Paused(pause_handler) = stage {
@@ -196,20 +203,26 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
     }
 }
 
-fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
-    let value_style = Style::default().fg(Color::Indexed(152));
+#[rustfmt::skip]
+fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
+    let (max_combo_label_color, highscore_label_color) = match stage {
+        Stage::Gameplay(handler) => (
+            if handler.blinking_labels().has_max_combo_blinked() { Color::Black } else { Color::Magenta },
+            if handler.blinking_labels().has_highscore_blinked() { Color::Black } else { Color::Red }
+        ),
+        _ => (Color::Magenta, Color::Red)
+    };
 
-    #[rustfmt::skip]
     let stats = [
         ("SCORE",       game.scoring().score(),                   Color::Green),
-        ("MAX COMBO",   u32::from(game.scoring().max_combo()),    Color::Magenta),
-        ("HIGHSCORE",   game.scoring().highscore(),               Color::Red),
+        ("MAX COMBO",   u32::from(game.scoring().max_combo()),    max_combo_label_color),
+        ("HIGHSCORE",   game.scoring().highscore(),               highscore_label_color),
     ];
 
     let lines = stats.into_iter().fold(Vec::with_capacity(stats.len() * 3), |mut lines, (label, value, color)| {
         lines.push(Line::default());
         lines.push(Line::from(label).style(Style::default().fg(color).bold()));
-        lines.push(Line::from(value.to_string()).style(value_style));
+        lines.push(Line::from(value.to_string()).style(Style::default().fg(Color::Indexed(152))));
         lines
     });
 
@@ -217,7 +230,7 @@ fn draw_stats(frame: &mut Frame, area: Rect, game: &Game) {
     frame.render_widget(stats, area);
 }
 
-fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
+fn draw_board(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     draw_board_border(frame, area);
 
     let board_inner_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
@@ -235,9 +248,9 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &Game, stage: Stage) {
         }
 
         // Pile with random colors
-        for y in 0..Game::BOARD_HEIGHT {
+        for y in 0..GameState::BOARD_HEIGHT {
             let y_as_i8 = i8::try_from(y).expect("Every y position in the pile should fit in `i8`");
-            for x in 0..Game::BOARD_WIDTH {
+            for x in 0..GameState::BOARD_WIDTH {
                 if game.get_pile().get(x, y).is_some() {
                     let seed = seed_for_randomizing_pile_blocks(flicker_tick, x, y);
                     let flickered_gem = Gem::random_for_pause(seed);
@@ -288,7 +301,6 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).bold();
 const STYLE_ACTIONS: Style = Style::new().fg(Color::Gray);
 
-#[derive(Copy, Clone)]
 struct LegendItem {
     key: &'static str,
     action: &'static str,

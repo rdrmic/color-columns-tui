@@ -1,7 +1,7 @@
 mod app;
 mod blocks;
 mod errors;
-mod game;
+mod game_state;
 mod logging;
 mod messages;
 mod rendering;

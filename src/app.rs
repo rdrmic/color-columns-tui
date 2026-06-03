@@ -13,23 +13,23 @@ use crate::logging;
 
 use crate::{
     errors::{self, Context},
-    game::Game,
+    game_state::GameState,
     rendering,
     stage_handlers::{ReadyHandler, Stage, StageHandler},
 };
 
 pub struct App {
-    is_running: bool,
     stage: Stage,
-    game: Game,
+    game: GameState,
+    is_running: bool,
 }
 
 impl App {
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
-        let mut game = Game::new(app_state_dir_path)?;
+        let mut game = GameState::new(app_state_dir_path)?;
         let stage = Stage::Ready(ReadyHandler::new(&mut game));
 
-        Ok(Self { is_running: true, stage, game })
+        Ok(Self { stage, game, is_running: true })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), errors::Error> {
@@ -38,7 +38,7 @@ impl App {
         while self.is_running {
             terminal
                 .draw(|frame| {
-                    rendering::render(frame, self.stage, &self.game);
+                    rendering::render(frame, &self.stage, &self.game);
                 })
                 .context("Failed to draw to terminal")?;
 

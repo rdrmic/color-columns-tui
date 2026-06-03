@@ -1,9 +1,20 @@
+### 0.1.6 / 2026-06-03
+
+- Enable blinking labels
+- Adjust messages' fading out
+- Derive `Copy` and `Clone` on appropriate structs and enums (which hold "plain" values and are <= 8 bytes)
+- Rename `Game` to `GameState`
+- Tidy up comments and remove unnecessary clippy allow annotation
+- `cargo update`
+- Use toolchain `nightly-2026-06-03`
+
+// 459K (469.504)
+
 ### 0.1.5 / 2026-06-01
 
 - Clean up TODOs and FIXMEs
-- Make `Message` struct `Copy`-able
 - Improve messages' fading out
-- Bump Rust: 1.95.0 -> 1.96.0
+- Bump Rust version: 1.95.0 -> 1.96.0
 - `cargo update`
 - Binary size optimizations:
   - Use toolchain `nightly-2026-06-01` (-1.712)
@@ -14,7 +25,6 @@
 
 - Reorganize layout to show level and in-game messages
 - In-game messages
-- Optimizing small enums and structs by making them `Copy`-able
 - Make `dev_console` take string literals AND strings to be formatted
 
 // 460K (470.816)
@@ -112,7 +122,7 @@
 - Show next column
 - Update timings because of the next column
 - Pile up columns until the `Gameover` stage
-- Bump Rust: 1.94.1 -> 1.95.0
+- Bump Rust version: 1.94.1 -> 1.95.0
 
 // 627K (641.376)
 
@@ -203,4 +213,4 @@
 
 - Binary size/performance optimization of a very basic Ratatui app
 
-// 3.4M
+// 3.4M (built in Debug mode)

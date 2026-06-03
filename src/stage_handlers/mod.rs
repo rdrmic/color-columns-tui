@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use ratatui::crossterm::event::KeyEvent;
 
-use crate::game::Game;
+use crate::game_state::GameState;
 
 pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;
@@ -22,7 +22,6 @@ const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
 const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
 const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
 
-#[derive(Copy, Clone)]
 pub enum Stage {
     Ready(ReadyHandler),
     Gameplay(GameplayHandler),
@@ -32,13 +31,13 @@ pub enum Stage {
 }
 
 pub trait StageHandler {
-    fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage>;
-    fn time_before_next_tick(&mut self, game: &mut Game) -> Duration;
-    fn update(&mut self, game: &mut Game) -> Option<Stage>;
+    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage>;
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration;
+    fn update(&mut self, game: &mut GameState) -> Option<Stage>;
 }
 
 impl StageHandler for Stage {
-    fn handle_key_pressed_event(&mut self, game: &mut Game, key_event: KeyEvent) -> Option<Stage> {
+    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage> {
         match self {
             Self::Ready(handler) => handler.handle_key_pressed_event(game, key_event),
             Self::Gameplay(handler) => handler.handle_key_pressed_event(game, key_event),
@@ -48,7 +47,7 @@ impl StageHandler for Stage {
         }
     }
 
-    fn time_before_next_tick(&mut self, game: &mut Game) -> Duration {
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
         match self {
             Self::Ready(handler) => handler.time_before_next_tick(game),
             Self::Gameplay(handler) => handler.time_before_next_tick(game),
@@ -58,7 +57,7 @@ impl StageHandler for Stage {
         }
     }
 
-    fn update(&mut self, game: &mut Game) -> Option<Stage> {
+    fn update(&mut self, game: &mut GameState) -> Option<Stage> {
         match self {
             Self::Ready(handler) => handler.update(game),
             Self::Gameplay(handler) => handler.update(game),

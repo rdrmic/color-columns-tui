@@ -139,7 +139,7 @@ impl Pile {
         }
     }
 
-    #[allow(clippy::cast_possible_wrap)] // Edge case for the hypothetical 16-bit platforms (which are extremely rare).
+    #[allow(clippy::cast_possible_wrap)]
     fn find_matches_from_gem_position(&self, (dx, dy): (i8, i8), x: u8, y: u8) -> Option<Vec<(u8, u8)>> {
         let gem = self.get(x, y)?;
 
@@ -179,9 +179,8 @@ impl Pile {
         None
     }
 
-    /// Count consecutive Gems of the same type in a given direction
+    /// Count consecutive Gems of the same type in a given direction.
     #[allow(clippy::maybe_infinite_iter)]
-    #[allow(clippy::cast_possible_wrap)] // For the hypothetical 16-bit platforms (which are extremely rare) edge case.
     fn count_consecutive_gems(&self, x: u8, y: u8, gem: Gem, dx: i8, dy: i8) -> usize {
         (1..)
             .take_while(|i| {
