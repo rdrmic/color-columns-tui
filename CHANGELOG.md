@@ -1,3 +1,11 @@
+## 0.1.8 / 2026-??-??
+
+- 
+
+```bash
+? KiB (? B)
+```
+
 ## 0.1.7 / 2026-06-04
 
 - Fix blinking labels after `Paused` stage
@@ -17,7 +25,6 @@
 - Rename `Game` to `GameState`
 - Tidy up comments and remove unnecessary clippy allow annotation
 - `cargo update`
-- Use toolchain `nightly-2026-06-03`
 
 ```bash
 459 KiB (469,504 B)
