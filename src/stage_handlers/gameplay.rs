@@ -84,20 +84,14 @@ pub struct BlinkingLabels {
     highscore: Option<BlinkingLabel>,
 }
 
-#[rustfmt::skip]
 impl BlinkingLabels {
-    const fn new(game: &GameState) -> Self {
-        let initial_highscore = game.scoring().highscore();
-        let highscore = if initial_highscore > 0 {
-            Some(BlinkingLabel::new(initial_highscore))
-        } else {
-            None
-        };
+    fn new(game: &GameState) -> Self {
+        let (level, max_combo, highscore) = Self::get_label_values(game);
 
         Self {
-            level: BlinkingLabel::new(1),
-            max_combo: BlinkingLabel::new(0),
-            highscore
+            level: BlinkingLabel::new(level),
+            max_combo: BlinkingLabel::new(max_combo),
+            highscore: if highscore > 0 { Some(BlinkingLabel::new(highscore)) } else { None },
         }
     }
 
@@ -118,11 +112,17 @@ impl BlinkingLabels {
     }
 
     fn update(&mut self, game: &GameState) {
-        self.level.update(u32::from(game.scoring().level()));
-        self.max_combo.update(u32::from(game.scoring().max_combo()));
-        if let Some(highscore) = self.highscore.as_mut() {
-            highscore.update(game.scoring().highscore());
+        let (level, max_combo, highscore) = Self::get_label_values(game);
+
+        self.level.update(level);
+        self.max_combo.update(max_combo);
+        if let Some(self_highscore) = self.highscore.as_mut() {
+            self_highscore.update(highscore);
         }
+    }
+
+    fn get_label_values(game: &GameState) -> (u32, u32, u32) {
+        (u32::from(game.scoring().level()), u32::from(game.scoring().max_combo()), game.scoring().highscore())
     }
 }
 
@@ -132,7 +132,7 @@ struct BlinkingLabel {
 }
 
 impl BlinkingLabel {
-    const BLINK_DURATION: u64 = 250;
+    const BLINK_DURATION: u64 = 450;
 
     const fn new(initial_value: u32) -> Self {
         Self { value: initial_value, blink_time: None }
@@ -150,14 +150,14 @@ impl BlinkingLabel {
 
     fn update(&mut self, current_value: u32) {
         // TODO `&& self.blink_time.is_none()` -> needed?
-        if current_value > self.value && self.blink_time.is_none() {
+        if current_value > self.value {
             self.value = current_value;
 
             self.start_blink_time();
         }
 
         if let Some(blink_time) = self.blink_time {
-            let elapsed_ms = blink_time.elapsed().as_millis() as u64;
+            let elapsed_ms = blink_time.elapsed().as_millis() as u64 + Self::BLINK_DURATION; // `+ Self::BLINK_DURATION` is to prepare for the subsequent rendering
             let num_blinks = elapsed_ms / (Self::BLINK_DURATION * 2);
             if num_blinks >= 2 {
                 self.finish_blink_time();

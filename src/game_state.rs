@@ -213,7 +213,7 @@ impl GameState {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading("Level up!", [255, 135, 0], 25, 5);
+            let message = Message::new_fading("Level up!", [255, 135, 0], 28, 5);
             self.set_message(Some(message));
 
             self.accelerate();

@@ -1,35 +1,52 @@
-### 0.1.6 / 2026-06-03
+## 0.1.7 / 2026-06-04
+
+- Fix blinking labels after `Paused` stage
+- Fix blinking labels glitch
+- Adjust lebels' `BLINK_DURATION`
+- Adjust "Level up!" message fading out
+
+```bash
+459 KiB (469,536 B)
+```
+
+## 0.1.6 / 2026-06-03
 
 - Enable blinking labels
 - Adjust messages' fading out
-- Derive `Copy` and `Clone` on appropriate structs and enums (which hold "plain" values and are <= 8 bytes)
+- Derive `Copy` and `Clone` on appropriate structs and enums (which hold "plain" values and are <= 8 bytes B)
 - Rename `Game` to `GameState`
 - Tidy up comments and remove unnecessary clippy allow annotation
 - `cargo update`
 - Use toolchain `nightly-2026-06-03`
 
-// 459K (469.504)
+```bash
+459 KiB (469,504 B)
+```
 
-### 0.1.5 / 2026-06-01
+## 0.1.5 / 2026-06-01
 
-- Clean up TODOs and FIXMEs
 - Improve messages' fading out
+- Clean up TODOs and FIXMEs
 - Bump Rust version: 1.95.0 -> 1.96.0
 - `cargo update`
 - Binary size optimizations:
-  - Use toolchain `nightly-2026-06-01` (-1.712)
+  - Use toolchain `nightly-2026-06-01` (-1,712 B)
 
-// 459K (469.120)
+```bash
+459 KiB (469,120 B)
+```
 
-### 0.1.4 / 2026-05-31
+## 0.1.4 / 2026-05-31
 
 - Reorganize layout to show level and in-game messages
 - In-game messages
 - Make `dev_console` take string literals AND strings to be formatted
 
-// 460K (470.816)
+```bash
+460 KiB (470,816 B)
+```
 
-### 0.1.3 / 2026-05-25
+## 0.1.3 / 2026-05-25
 
 - Adjust leveling; refactor scoring
 - Fix missing score updating when there are no hanging gems
@@ -37,20 +54,24 @@
 - Extract `get_game_state_after_matches_search` function
 - Refactor
 
-// 458K (468.320)
+```bash
+458 KiB (468,320 B)
+```
 
-### 0.1.2 / 2026-05-09
+## 0.1.2 / 2026-05-09
 
 - Binary size optimizations:
-  - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6.528)
-  - Enable `-Zlocation-detail=none`  (-37.424)
-  - Enable `-Zfmt-debug=none` (-9.920)
-  - Reduce inline threshold for monomorphization control (`-Cllvm-args=--inline-threshold=45`) (-11.376)
-  - Add `stderr_warning` utility function in `main.rs` (-224)
+  - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6,528 B)
+  - Enable `-Zlocation-detail=none`  (-37,424 B)
+  - Enable `-Zfmt-debug=none` (-9,920 B)
+  - Reduce inline threshold for monomorphization control (`-Cllvm-args=--inline-threshold=45`) (-11,376 B)
+  - Add `stderr_warning` utility function in `main.rs` (-224 B)
 
-// 458K (468.640)
+```bash
+458 KiB (468,640 B)
+```
 
-### 0.1.1 / 2026-05-08
+## 0.1.1 / 2026-05-08
 
 - Skip tick if there aren't hanging blocks
 - Log random seed for reproducibility
@@ -64,23 +85,29 @@
   - Use `concat!` macro to create terminal title in compile time
   - Reuse `FAILED_TO_START_GAME_ERROR` `&str` constant across stage handlers
 
-// 522K (534.112)
+```bash
+522 KiB (534,112 B)
+```
 
-### 0.1.0 / 2026-05-06    --> Fully playable game
+## 0.1.0 / 2026-05-06    --> Fully playable game
 
 - Persist and read high score from file
 - Use common application state directory (for log and high score files)
 - Improve/optimize and refactor
 
-// 525K (536.872)
+```bash
+525 KiB (536,872 B)
+```
 
-### 0.0.15 / 2026-05-06
+## 0.0.15 / 2026-05-06
 
 - Make clearing matches and "gravity" effect visually sequential
 
-// 520K (532.128)
+```bash
+520 KiB (532,128 B)
+```
 
-### 0.0.14 / 2026-05-02
+## 0.0.14 / 2026-05-02
 
 - Find and clear the matches
 - Add scoring calculations
@@ -88,9 +115,11 @@
 - Move listening to `F1` key to `ReadyHandler` only
 - Adjust instructions text and improve layout
 
-// 521K (533.352)
+```bash
+521 KiB (533,352 B)
+```
 
-### 0.0.13 / 2026-04-28
+## 0.0.13 / 2026-04-28
 
 - Binary size optimizations:
     - Change `lto = true` to `lto = "fat"`
@@ -101,21 +130,27 @@
     - Replace unnecessary `{:?}`/`{:#?}` with `{}`
     - Introduce `rust-toolchain.toml` with `channel = "nightly-2026-04-26"`
 
-// 511K (523.080)
+```bash
+511 KiB (523,080 B)
+```
 
 ## 0.0.12 / 2026-04-23
 
 - `Instructions` stage
 - Further refactoring of `rendering/mod.rs` and sub-modules
 
-// 630K (644.272)
+```bash
+630 KiB (644,272 B)
+```
 
 ## 0.0.11 / 2026-04-23
 
 - `Paused` stage with "flickering" Gems
 - Extract rendering of shared areas into the `stage_handlers/mod.rs`
 
-// 628K (642.728)
+```bash
+628 KiB (642,728 B)
+```
 
 ## 0.0.10 / 2026-04-22
 
@@ -124,7 +159,9 @@
 - Pile up columns until the `Gameover` stage
 - Bump Rust version: 1.94.1 -> 1.95.0
 
-// 627K (641.376)
+```bash
+627 KiB (641,376 B)
+```
 
 ## 0.0.9 / 2026-04-19
 
@@ -133,7 +170,9 @@
 - Optimize and improve keys legend mechanism
 - `cargo update`
 
-// 630K (644.232)
+```bash
+630 KiB (644,232 B)
+```
 
 ## 0.0.8 / 2026-04-12
 
@@ -141,7 +180,9 @@
 - Keys legend at the bottom
 - Add stages: `Ready`, `Gameplay` and `Game Over`
 
-// 629K (643.128)
+```bash
+629 KiB (643,128 B)
+```
 
 ## 0.0.7 / 2026-04-11
 
@@ -151,7 +192,9 @@
 - Detect game over
 - Log panic error to file
 
-// 625K (639.392)
+```bash
+625 KiB (639,392 B)
+```
 
 ## 0.0.6 / 2026-04-08
 
@@ -160,13 +203,17 @@
 - Creating blocks in random colors
 - Falling, manipulable column (handling user input), spawning at random x position
 
-// 623K (637.496)
+```bash
+623 KiB (637,496 B)
+```
 
 ## 0.0.5 / 2026-04-06
 
 - Basic MVC
 
-// 614K (627.768)
+```bash
+614 KiB (627,768 B)
+```
 
 ## 0.0.4 / 2026-04-06
 
@@ -178,7 +225,9 @@
 - Binary size optimizations:
   - opt-level = "z"
 
-// 613K (627.624)
+```bash
+613 KiB (627,624 B)
+```
 
 ## 0.0.3 / 2026-04-05
 
@@ -187,7 +236,9 @@
 - Put in-file and in-console logging in a separate module
 - Improve frame rate and responsiveness
 
-// 622K (636.384)
+```bash
+622 KiB (636,384 B)
+```
 
 ## 0.0.2 / 2026-04-04
 
@@ -196,7 +247,9 @@
 - Check a minimum number of terminal columns and rows
 - Refactor `main.rs` and `logger.rs`
 
-// 611K (625.328)
+```bash
+611 KiB (625,328 B)
+```
 
 ## 0.0.1 / 2026-04-04
 
@@ -207,10 +260,14 @@
   - Shave off unnecessary dependencies and/or their features
   - Replace `color-eyre` with`anyhow`
 
-// 602K (615.592)
+```bash
+602 KiB (615,592 B)
+```
 
 ## 0.0.0 / 2025-05-02
 
-- Binary size/performance optimization of a very basic Ratatui app
+- Create a basic Ratatui app
 
-// 3.4M (built in Debug mode)
+```bash
+3,4 MiB   # built in Debug mode
+```
