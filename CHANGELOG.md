@@ -1,9 +1,9 @@
 ## 0.1.8 / 2026-??-??
 
-- 
+- Improve and simplify clearing matches (-16 B)
 
 ```bash
-? KiB (? B)
+459 KiB (469,520 B)
 ```
 
 ## 0.1.7 / 2026-06-04
