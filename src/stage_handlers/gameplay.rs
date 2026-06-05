@@ -157,9 +157,8 @@ impl BlinkingLabel {
         }
 
         if let Some(blink_time) = self.blink_time {
-            let elapsed_ms = blink_time.elapsed().as_millis() as u64 + Self::BLINK_DURATION; // `+ Self::BLINK_DURATION` is to prepare for the subsequent rendering
-            let num_blinks = elapsed_ms / (Self::BLINK_DURATION * 2);
-            if num_blinks >= 2 {
+            let elapsed_ms = blink_time.elapsed().as_millis() as u64;
+            if elapsed_ms >= Self::BLINK_DURATION * 3 {
                 self.finish_blink_time();
             }
         }

@@ -1,6 +1,7 @@
 ## 0.1.8 / 2026-??-??
 
-- Improve and simplify clearing matches (-16 B)
+- Improve and simplify clearing matches
+- Improve and simplify labels' blink time calculation (-16 B)
 
 ```bash
 459 KiB (469,520 B)
