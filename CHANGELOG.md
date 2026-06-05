@@ -2,6 +2,7 @@
 
 - Improve and simplify clearing matches
 - Improve and simplify labels' blink time calculation (-16 B)
+- Improve `.cargo/config.nightly.toml`
 
 ```bash
 459 KiB (469,520 B)

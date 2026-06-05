@@ -1,8 +1,12 @@
 [build]
 rustflags = [
+    "-C", "debuginfo=0",
     "-Clink-arg=-Wl,--gc-sections",
     "-Clink-arg=-Wl,--icf=all",
     "-Zlocation-detail=none",
     "-Zfmt-debug=none",
     "-Cllvm-args=--inline-threshold=45",
 ]
+
+[unstable]
+build-std = ["std", "panic_abort"]
