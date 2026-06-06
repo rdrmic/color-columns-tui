@@ -2,6 +2,7 @@
 
 - Improve and simplify clearing matches
 - Improve and simplify labels' blink time calculation (-16 B)
+- Reorganize top-most files' statements
 - Improve `.cargo/config.nightly.toml`
 
 ```bash

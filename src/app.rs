@@ -10,7 +10,6 @@ use ratatui::{
 
 #[cfg(feature = "dev-console")]
 use crate::logging;
-
 use crate::{
     errors::{self, Context},
     game_state::GameState,
@@ -92,6 +91,7 @@ impl App {
         // Stages keys
         if let Some(next_stage) = self.stage.handle_key_pressed_event(&mut self.game, *key_event) {
             self.stage = next_stage;
+
             #[cfg(feature = "dev-console")]
             return;
         }

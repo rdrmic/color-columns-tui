@@ -1,26 +1,24 @@
-mod gameover_ui;
-mod gameplay_ui;
-mod instructions_ui;
-mod paused_ui;
-mod ready_ui;
-
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, HorizontalAlignment, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Padding, Paragraph, Wrap},
 };
-use ratatui::{layout::HorizontalAlignment, widgets::Padding};
 
 #[cfg(feature = "dev-console")]
 use crate::logging;
-
 use crate::{
     blocks::{self, Gem},
     game_state::GameState,
     stage_handlers::Stage,
 };
+
+mod gameover_ui;
+mod gameplay_ui;
+mod instructions_ui;
+mod paused_ui;
+mod ready_ui;
 
 #[cfg(feature = "dev-console")]
 pub const MIN_WINDOW_WIDTH: u16 = 160;
