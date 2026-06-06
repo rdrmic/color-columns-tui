@@ -1,8 +1,25 @@
+## 0.1.8 / 2026-06-06
+
+- Set terminal background color to black
+- Decrease FPS from 62,5 to ~30 (it reduced CPU usage by nearly 3x)
+- Improve and simplify clearing matches
+- Improve and simplify labels' blink time calculation
+- Eliminate `clone()` calls
+- Remove unnecessary constants
+- Reorganize top-most files' statements
+- Improve `.cargo/config.nightly.toml`
+- Bump Ratatui version: 0.30.0 -> 0.30.1
+- `cargo update`
+
+```bash
+458 KiB (468,480 B)
+```
+
 ## 0.1.7 / 2026-06-04
 
 - Fix blinking labels after `Paused` stage
 - Fix blinking labels glitch
-- Adjust lebels' `BLINK_DURATION`
+- Adjust labels' `BLINK_DURATION`
 - Adjust "Level up!" message fading out
 
 ```bash
@@ -17,7 +34,6 @@
 - Rename `Game` to `GameState`
 - Tidy up comments and remove unnecessary clippy allow annotation
 - `cargo update`
-- Use toolchain `nightly-2026-06-03`
 
 ```bash
 459 KiB (469,504 B)
@@ -122,13 +138,13 @@
 ## 0.0.13 / 2026-04-28
 
 - Binary size optimizations:
-    - Change `lto = true` to `lto = "fat"`
-    - Add `features = ["release_max_level_off"]` to `log`
-    - Replace `env_logger` with a simple custom logger
-    - Remove `time`
-    - Replace `anyhow` with "manual" error handling
-    - Replace unnecessary `{:?}`/`{:#?}` with `{}`
-    - Introduce `rust-toolchain.toml` with `channel = "nightly-2026-04-26"`
+  - Change `lto = true` to `lto = "fat"`
+  - Add `features = ["release_max_level_off"]` to `log`
+  - Replace `env_logger` with a simple custom logger
+  - Remove `time`
+  - Replace `anyhow` with "manual" error handling
+  - Replace unnecessary `{:?}`/`{:#?}` with `{}`
+  - Introduce `rust-toolchain.toml` with `channel = "nightly-2026-04-26"`
 
 ```bash
 511 KiB (523,080 B)

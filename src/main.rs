@@ -1,3 +1,9 @@
+use std::path::{Path, PathBuf};
+
+use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
+
+use crate::errors::Context;
+
 mod app;
 mod blocks;
 mod errors;
@@ -7,12 +13,6 @@ mod messages;
 mod rendering;
 mod scoring;
 mod stage_handlers;
-
-use std::path::{Path, PathBuf};
-
-use ratatui::{Terminal, backend::CrosstermBackend, crossterm};
-
-use crate::errors::Context;
 
 const TERMINAL_TITLE: &str = concat!(env!("CARGO_PKG_DESCRIPTION"), " v", env!("CARGO_PKG_VERSION"));
 

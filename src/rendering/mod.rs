@@ -1,32 +1,29 @@
-mod gameover_ui;
-mod gameplay_ui;
-mod instructions_ui;
-mod paused_ui;
-mod ready_ui;
-
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, HorizontalAlignment, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Padding, Paragraph, Wrap},
 };
-use ratatui::{layout::HorizontalAlignment, widgets::Padding};
 
 #[cfg(feature = "dev-console")]
 use crate::logging;
-
 use crate::{
     blocks::{self, Gem},
     game_state::GameState,
     stage_handlers::Stage,
 };
 
+mod gameover_ui;
+mod gameplay_ui;
+mod instructions_ui;
+mod paused_ui;
+mod ready_ui;
+
 #[cfg(feature = "dev-console")]
 pub const MIN_WINDOW_WIDTH: u16 = 160;
 #[cfg(not(feature = "dev-console"))]
 pub const MIN_WINDOW_WIDTH: u16 = 29;
-
 pub const MIN_WINDOW_HEIGHT: u16 = 27;
 
 // ============================================================================
@@ -34,6 +31,8 @@ pub const MIN_WINDOW_HEIGHT: u16 = 27;
 // ============================================================================
 pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
     let frame_area = frame.area();
+
+    set_bg_and_fg_colors(frame, frame_area);
 
     if is_terminal_window_too_small(frame_area) {
         render_message_terminal_window_too_small(frame, frame_area);
@@ -51,6 +50,11 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
 
     #[cfg(feature = "dev-console")]
     logging::dev_console::draw(frame, layout_areas.dev_console);
+}
+
+fn set_bg_and_fg_colors(frame: &mut Frame, frame_area: Rect) {
+    // TODO unify/structurize colors throughout the app
+    frame.buffer_mut().set_style(frame_area, Style::default().bg(Color::Black).fg(Color::Rgb(0, 225, 0)));
 }
 
 fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &GameState, stage: &Stage) {
@@ -323,7 +327,7 @@ fn compile_legend(legend: &[LegendItem]) -> (Text<'static>, Text<'static>) {
     (keys, actions)
 }
 
-fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)) {
+fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>)) {
     let legend_block = Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::Indexed(245)));
     frame.render_widget(&legend_block, area);
 
@@ -332,8 +336,8 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: &(Text<'_>, Text<'_>)
     let actions_area = horizontal_layout[2];
 
     let (keys, actions) = legend;
-    frame.render_widget(Paragraph::new(keys.clone()), keys_area);
-    frame.render_widget(Paragraph::new(actions.clone()), actions_area);
+    frame.render_widget(Paragraph::new(keys), keys_area);
+    frame.render_widget(Paragraph::new(actions), actions_area);
 }
 
 // ============================================================================

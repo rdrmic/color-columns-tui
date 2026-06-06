@@ -19,7 +19,7 @@ pub use ready::ReadyHandler;
 const FAILED_TO_START_GAME_ERROR: &str = "Failed to start the game";
 
 const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
-const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
+const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(33);
 const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
 
 pub enum Stage {

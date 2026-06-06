@@ -55,21 +55,21 @@ impl StageHandler for GameplayHandler {
     }
 
     fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
-        let time_before_next_game_tick = game.tick_rate().checked_sub(self.gravity_time.elapsed()).unwrap_or(Duration::ZERO);
+        let time_before_next_game_tick = game.current_tick_duration().checked_sub(self.gravity_time.elapsed()).unwrap_or(Duration::ZERO);
         FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
     }
 
     fn update(&mut self, game: &mut GameState) -> Option<Stage> {
-        let tick_rate = game.tick_rate();
+        let tick_rate = game.current_tick_duration();
 
-        // Use `while` instead of `if` to catch up if the computer hitched
+        // Use `while` instead of `if` to catch up if the process "hitched"
         while self.gravity_time.elapsed() >= tick_rate {
             if let Some(gameover_stage) = self.try_updating_tick(game, self.gravity_time + tick_rate) {
                 return Some(gameover_stage);
             }
         }
 
-        self.blinking_labels.update(game); // TODO should this be at the top of the function?
+        self.blinking_labels.update(game);
 
         None
     }
@@ -149,17 +149,14 @@ impl BlinkingLabel {
     }
 
     fn update(&mut self, current_value: u32) {
-        // TODO `&& self.blink_time.is_none()` -> needed?
         if current_value > self.value {
             self.value = current_value;
-
             self.start_blink_time();
         }
 
         if let Some(blink_time) = self.blink_time {
-            let elapsed_ms = blink_time.elapsed().as_millis() as u64 + Self::BLINK_DURATION; // `+ Self::BLINK_DURATION` is to prepare for the subsequent rendering
-            let num_blinks = elapsed_ms / (Self::BLINK_DURATION * 2);
-            if num_blinks >= 2 {
+            let elapsed_ms = blink_time.elapsed().as_millis() as u64;
+            if elapsed_ms >= Self::BLINK_DURATION * 3 {
                 self.finish_blink_time();
             }
         }

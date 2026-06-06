@@ -33,7 +33,7 @@ impl GameState {
     pub const BOARD_HEIGHT: u8 = 13;
 
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
-    const MIN_TICK_DURATION: Duration = Duration::from_millis(100); // TODO determine it accurately
+    const MIN_TICK_DURATION: Duration = Duration::from_millis(50); // TODO determine it accurately with possible correction of ACCELERATION_FACTOR
     const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
 
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
@@ -110,7 +110,7 @@ impl GameState {
         &self.scoring
     }
 
-    pub const fn tick_rate(&self) -> Duration {
+    pub const fn current_tick_duration(&self) -> Duration {
         self.current_tick_duration
     }
 

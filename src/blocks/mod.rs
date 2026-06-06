@@ -1,11 +1,11 @@
-mod block;
-mod column;
-mod pile;
-
 pub use block::{Block, Gem};
 pub use column::{Column, FallingColumnPlaceholder};
 pub use num_matches_unpacking::unpack_matches_points;
 pub use pile::Pile;
+
+mod block;
+mod column;
+mod pile;
 
 // ============================================================================
 // Searching for matches

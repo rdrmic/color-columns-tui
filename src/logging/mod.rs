@@ -1,7 +1,6 @@
-pub mod file_logger;
-
 #[cfg(feature = "dev-console")]
 pub mod dev_console;
+pub mod file_logger;
 
 // ============================================================================
 // "dev-console" feature ENABLED: Working macros

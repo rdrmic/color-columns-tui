@@ -24,7 +24,7 @@ impl Pile {
     pub fn lock(&mut self, column: Column) -> bool {
         for (gem_x, gem_y, gem) in column.gems() {
             if let Ok(gem_y) = u8::try_from(gem_y) {
-                let idx = self.calculate_grid_idx(gem_x, gem_y);
+                let idx = Self::calculate_grid_idx(gem_x, gem_y, self.width);
                 if let Some(slot) = self.grid.get_mut(idx) {
                     *slot = Some(gem);
                 }
@@ -36,12 +36,12 @@ impl Pile {
     }
 
     pub fn get(&self, x: u8, y: u8) -> Option<Gem> {
-        let idx = self.calculate_grid_idx(x, y);
-        self.grid.get(idx).and_then(|&g| g)
+        let idx = Self::calculate_grid_idx(x, y, self.width);
+        *self.grid.get(idx)?
     }
 
-    const fn calculate_grid_idx(&self, x: u8, y: u8) -> usize {
-        (y * self.width + x) as usize
+    const fn calculate_grid_idx(x: u8, y: u8, width: u8) -> usize {
+        (y * width + x) as usize
     }
 
     // ============================================================================
@@ -96,13 +96,12 @@ impl Pile {
     }
 
     pub fn clear_matches(&mut self) {
-        for (x, y) in &self.matched_positions {
-            let idx = self.calculate_grid_idx(*x, *y);
+        for (x, y) in self.matched_positions.drain() {
+            let idx = Self::calculate_grid_idx(x, y, self.width);
             if let Some(slot) = self.grid.get_mut(idx) {
                 *slot = None;
             }
         }
-        self.matched_positions.clear();
     }
 
     pub fn has_hanging_gems(&self) -> bool {
@@ -128,8 +127,8 @@ impl Pile {
             for y_read_pos in (0..self.height).rev() {
                 if self.get(x, y_read_pos).is_some() {
                     if y_read_pos != y_write_pos {
-                        let write_idx = self.calculate_grid_idx(x, y_write_pos);
-                        let read_idx = self.calculate_grid_idx(x, y_read_pos);
+                        let write_idx = Self::calculate_grid_idx(x, y_write_pos, self.width);
+                        let read_idx = Self::calculate_grid_idx(x, y_read_pos, self.width);
                         self.grid[write_idx] = self.grid[read_idx];
                         self.grid[read_idx] = None;
                     }

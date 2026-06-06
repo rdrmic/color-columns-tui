@@ -1,5 +1,6 @@
 #![allow(unused)]
 #![cfg(feature = "dev-console")]
+
 use std::{
     borrow::Cow,
     collections::VecDeque,
@@ -146,13 +147,8 @@ fn flush_messages_as_lines(console: &mut DevConsoleState) {
 }
 
 // ============================================================================
-// Print Colors
+// Print colors
 // ============================================================================
-const STYLE_COLOR_GRAY: Style = Style::new().fg(Color::Gray);
-const STYLE_COLOR_CYAN: Style = Style::new().fg(Color::Cyan);
-const STYLE_COLOR_YELLOW: Style = Style::new().fg(Color::Yellow);
-const STYLE_COLOR_RED: Style = Style::new().fg(Color::Red);
-
 #[derive(Copy, Clone)]
 pub enum PrintColor {
     Gray,
@@ -164,10 +160,10 @@ pub enum PrintColor {
 impl From<PrintColor> for Style {
     fn from(color: PrintColor) -> Self {
         match color {
-            PrintColor::Gray => STYLE_COLOR_GRAY,
-            PrintColor::Cyan => STYLE_COLOR_CYAN,
-            PrintColor::Yellow => STYLE_COLOR_YELLOW,
-            PrintColor::Red => STYLE_COLOR_RED,
+            PrintColor::Gray => Self::new().fg(Color::Gray),
+            PrintColor::Cyan => Self::new().fg(Color::Cyan),
+            PrintColor::Yellow => Self::new().fg(Color::Yellow),
+            PrintColor::Red => Self::new().fg(Color::Red),
         }
     }
 }

@@ -13,7 +13,7 @@ const LEGEND_ITEMS: &[LegendItem] = &[
 ];
 
 pub(super) fn draw_footer(frame: &mut Frame, area: Rect) {
-    draw_keys_legend(frame, area, &compile_legend(LEGEND_ITEMS));
+    draw_keys_legend(frame, area, compile_legend(LEGEND_ITEMS));
 }
 
 pub(super) fn draw_instructions(frame: &mut Frame, area: Rect) {
