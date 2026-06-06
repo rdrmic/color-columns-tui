@@ -160,7 +160,7 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 // ============================================================================
 fn draw_level(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let style = if let Stage::Gameplay(gameplay_handler) = stage
-        && gameplay_handler.blinking_labels().has_level_blinked()
+        && gameplay_handler.blinking_labels().has_level_blinked(game)
     {
         Style::default().fg(Color::Black)
     } else {
@@ -190,7 +190,7 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Sta
 
     if let Stage::Paused(pause_handler) = stage {
         // Next column with random colors
-        let flicker_tick = pause_handler.flicker_tick();
+        let flicker_tick = pause_handler.flicker_tick(game);
         for (x, y, _) in game.get_next_column().gems() {
             let seed = seed_for_randomizing_next_column_blocks(flicker_tick, x, y);
             let flickered_gem = Gem::random_for_pause(seed);
@@ -205,8 +205,8 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Sta
 fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let (max_combo_label_color, highscore_label_color) = match stage {
         Stage::Gameplay(handler) => (
-            if handler.blinking_labels().has_max_combo_blinked() { Color::Black } else { Color::Magenta },
-            if handler.blinking_labels().has_highscore_blinked() { Color::Black } else { Color::Red }
+            if handler.blinking_labels().has_max_combo_blinked(game) { Color::Black } else { Color::Magenta },
+            if handler.blinking_labels().has_highscore_blinked(game) { Color::Black } else { Color::Red }
         ),
         _ => (Color::Magenta, Color::Red)
     };
@@ -234,7 +234,7 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let board_inner_area = Rect { x: area.x + 1, y: area.y + 1, width: area.width - 2, height: area.height - 2 };
 
     if let Stage::Paused(pause_handler) = stage {
-        let flicker_tick = pause_handler.flicker_tick();
+        let flicker_tick = pause_handler.flicker_tick(game);
 
         // Falling column with random colors
         for (x, y, _) in game.get_falling_column().gems() {

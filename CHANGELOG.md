@@ -4,9 +4,10 @@
 - Improve and simplify labels' blink time calculation (-16 B)
 - Reorganize top-most files' statements
 - Improve `.cargo/config.nightly.toml`
+- Replace `Instant`/`Duration` with raw `u64` (milliseconds) for core game loop timing logic (+112 B)
 
 ```bash
-459 KiB (469,520 B)
+459 KiB (469,632 B)
 ```
 
 ## 0.1.7 / 2026-06-04

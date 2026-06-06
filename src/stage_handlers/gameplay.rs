@@ -1,27 +1,25 @@
-use std::time::{Duration, Instant};
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
-    game_state::GameState,
+    game_state::{GameState, Millis},
     stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, PausedHandler, Stage, StageHandler},
 };
 
 pub struct GameplayHandler {
-    gravity_time: Instant,
+    gravity_time: Millis,
     blinking_labels: BlinkingLabels,
 }
 
 impl GameplayHandler {
     pub fn new(game: &GameState) -> Self {
-        Self { gravity_time: Instant::now(), blinking_labels: BlinkingLabels::new(game) }
+        Self { gravity_time: game.current_time(), blinking_labels: BlinkingLabels::new(game) }
     }
 
     pub const fn blinking_labels(&self) -> &BlinkingLabels {
         &self.blinking_labels
     }
 
-    fn try_updating_tick(&mut self, game: &mut GameState, next_tick: Instant) -> Option<Stage> {
+    fn try_updating_tick(&mut self, game: &mut GameState, next_tick: Millis) -> Option<Stage> {
         if !game.tick() {
             return Some(Stage::GameOver(GameOverHandler::new(game)));
         }
@@ -38,13 +36,13 @@ impl StageHandler for GameplayHandler {
             KeyCode::Up => game.rotate_up(),
             KeyCode::Down => game.rotate_down(),
             KeyCode::Char('0') | KeyCode::Insert => {
-                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
+                if let Some(gameover_stage) = self.try_updating_tick(game, game.current_time()) {
                     return Some(gameover_stage);
                 }
             }
             KeyCode::Char(' ') => {
                 game.drop();
-                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
+                if let Some(gameover_stage) = self.try_updating_tick(game, game.current_time()) {
                     return Some(gameover_stage);
                 }
             }
@@ -54,22 +52,23 @@ impl StageHandler for GameplayHandler {
         None
     }
 
-    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
-        let time_before_next_game_tick = game.tick_rate().checked_sub(self.gravity_time.elapsed()).unwrap_or(Duration::ZERO);
-        FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Millis {
+        let elapsed = game.current_time().saturating_sub(self.gravity_time);
+
+        FRAME_DURATION_GAMEPLAY.min(game.current_tick_duration().saturating_sub(elapsed))
     }
 
     fn update(&mut self, game: &mut GameState) -> Option<Stage> {
-        let tick_rate = game.tick_rate();
+        let tick_duration = game.current_tick_duration();
 
-        // Use `while` instead of `if` to catch up if the computer hitched
-        while self.gravity_time.elapsed() >= tick_rate {
-            if let Some(gameover_stage) = self.try_updating_tick(game, self.gravity_time + tick_rate) {
+        // Use `while` instead of `if` to catch up if the process "hitched"
+        while game.current_time().saturating_sub(self.gravity_time) >= tick_duration {
+            if let Some(gameover_stage) = self.try_updating_tick(game, self.gravity_time.saturating_add(tick_duration)) {
                 return Some(gameover_stage);
             }
         }
 
-        self.blinking_labels.update(game); // TODO should this be at the top of the function?
+        self.blinking_labels.update(game);
 
         None
     }
@@ -95,29 +94,29 @@ impl BlinkingLabels {
         }
     }
 
-    pub fn has_level_blinked(&self) -> bool {
-        self.level.blinked()
+    pub const fn has_level_blinked(&self, game: &GameState) -> bool {
+        self.level.blinked(game)
     }
 
-    pub fn has_max_combo_blinked(&self) -> bool {
-        self.max_combo.blinked()
+    pub const fn has_max_combo_blinked(&self, game: &GameState) -> bool {
+        self.max_combo.blinked(game)
     }
 
-    pub fn has_highscore_blinked(&self) -> bool {
+    pub const fn has_highscore_blinked(&self, game: &GameState) -> bool {
         let Some(highscore) = &self.highscore else {
             return false;
         };
 
-        highscore.blinked()
+        highscore.blinked(game)
     }
 
     fn update(&mut self, game: &GameState) {
         let (level, max_combo, highscore) = Self::get_label_values(game);
 
-        self.level.update(level);
-        self.max_combo.update(max_combo);
+        self.level.update(game, level);
+        self.max_combo.update(game, max_combo);
         if let Some(self_highscore) = self.highscore.as_mut() {
-            self_highscore.update(highscore);
+            self_highscore.update(game, highscore);
         }
     }
 
@@ -128,44 +127,42 @@ impl BlinkingLabels {
 
 struct BlinkingLabel {
     value: u32,
-    blink_time: Option<Instant>,
+    blink_time: Option<Millis>,
 }
 
 impl BlinkingLabel {
-    const BLINK_DURATION: u64 = 450;
+    const BLINK_DURATION: Millis = 450;
 
     const fn new(initial_value: u32) -> Self {
         Self { value: initial_value, blink_time: None }
     }
 
-    fn blinked(&self) -> bool {
+    const fn blinked(&self, game: &GameState) -> bool {
         let Some(blink_time) = self.blink_time else {
             return false;
         };
 
-        let elapsed_ms = blink_time.elapsed().as_millis() as u64;
-        let blink_state = (elapsed_ms / Self::BLINK_DURATION) % 2;
+        let elapsed = game.current_time().saturating_sub(blink_time);
+        let blink_state = (elapsed / Self::BLINK_DURATION) % 2;
         blink_state == 0
     }
 
-    fn update(&mut self, current_value: u32) {
-        // TODO `&& self.blink_time.is_none()` -> needed?
+    const fn update(&mut self, game: &GameState, current_value: u32) {
         if current_value > self.value {
             self.value = current_value;
-
-            self.start_blink_time();
+            self.start_blink_time(game);
         }
 
         if let Some(blink_time) = self.blink_time {
-            let elapsed_ms = blink_time.elapsed().as_millis() as u64;
-            if elapsed_ms >= Self::BLINK_DURATION * 3 {
+            let elapsed = game.current_time().saturating_sub(blink_time);
+            if elapsed >= Self::BLINK_DURATION * 3 {
                 self.finish_blink_time();
             }
         }
     }
 
-    fn start_blink_time(&mut self) {
-        self.blink_time = Some(Instant::now());
+    const fn start_blink_time(&mut self, game: &GameState) {
+        self.blink_time = Some(game.current_time());
     }
 
     const fn finish_blink_time(&mut self) {

@@ -10,6 +10,8 @@ use crate::{
     scoring::Scoring,
 };
 
+pub type Millis = u64;
+
 enum GameplayState {
     FallingColumn,
     ClearingMatches(u64),
@@ -21,7 +23,8 @@ pub struct GameState {
     column_falling: Column,
     pile: Pile,
     scoring: Scoring,
-    current_tick_duration: Duration,
+    current_time: Millis,
+    current_tick_duration: Millis,
     gameplay_state: GameplayState,
     message: Option<Message>,
     app_state_dir_path: Option<PathBuf>,
@@ -32,8 +35,8 @@ impl GameState {
     pub const BOARD_WIDTH: u8 = 6;
     pub const BOARD_HEIGHT: u8 = 13;
 
-    const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
-    const MIN_TICK_DURATION: Duration = Duration::from_millis(100); // TODO determine it accurately
+    const INITIAL_TICK_DURATION: Millis = 750;
+    const MIN_TICK_DURATION: Millis = 100; // TODO determine it accurately
     const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
 
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
@@ -46,6 +49,7 @@ impl GameState {
             column_falling: Column::placeholder(),
             pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
             scoring: Scoring::new(app_state_dir_path.as_deref())?,
+            current_time: 0,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             gameplay_state: GameplayState::FallingColumn,
             message: None,
@@ -110,7 +114,15 @@ impl GameState {
         &self.scoring
     }
 
-    pub const fn tick_rate(&self) -> Duration {
+    pub const fn current_time(&self) -> Millis {
+        self.current_time
+    }
+
+    pub const fn update_current_time(&mut self, start_time_elapsed: &Duration) {
+        self.current_time = duration_to_ms(start_time_elapsed);
+    }
+
+    pub const fn current_tick_duration(&self) -> Millis {
         self.current_tick_duration
     }
 
@@ -159,9 +171,8 @@ impl GameState {
     }
 
     fn accelerate(&mut self) {
-        let current_ms = self.current_tick_duration.as_millis() as u64;
-        let new_ms = (current_ms * u64::from(Self::ACCELERATION_FACTOR)) / 100;
-        self.current_tick_duration = Duration::from_millis(new_ms).max(Self::MIN_TICK_DURATION);
+        let calculated_tick_duration = (self.current_tick_duration * u64::from(Self::ACCELERATION_FACTOR)) / 100;
+        self.current_tick_duration = calculated_tick_duration.max(Self::MIN_TICK_DURATION);
     }
 
     fn write_highscore_to_file(&self) {
@@ -245,15 +256,41 @@ impl GameState {
 }
 
 // ============================================================================
-// RNG
+// Helper functions
 // ============================================================================
-#[rustfmt::skip]
 fn create_rng() -> Result<fastrand::Rng, errors::Error> {
-    let now = SystemTime::now();
-    let seed = now.duration_since(UNIX_EPOCH)
-        .context("Failed to generate random seed from system time: system clock is set before year 1970")?
-        .as_millis() as u64;
+    let elapsed_since_epoch =
+        SystemTime::now().duration_since(UNIX_EPOCH).context("Failed to generate random seed from system time: system clock is set before year 1970")?;
+    let seed = duration_to_ms(&elapsed_since_epoch);
 
     log::debug!("Using random seed: {seed}");
     Ok(fastrand::Rng::with_seed(seed))
+}
+
+/// Converts a standard library `Duration` to a raw `u64` millisecond representation.
+///
+/// # Rationale: `u64` (Millis) vs `std::time::Instant` / `Duration`
+///
+/// The core game loop operates entirely on raw 64-bit integers (`Millis`) rather than
+/// standard library time structures. This boundary coercion strategy is enforced for
+/// the following architectural reasons:
+///
+/// 1. **Intrinsic Purging (No 128-bit math):** The standard library's
+///    `Duration::as_millis()` method returns a `u128`. By manually calculating
+///    milliseconds natively, 128-bit math and structural layouts
+///    are completely purged from the core loop.
+///    *(Note: Translating between `Duration` and `u64` requires
+///    division/modulo assembly at the `crossterm` boundary, resulting in a net ~112
+///    byte binary increase. This is an acceptable tradeoff for the CPU and RAM
+///    efficiency explained below.)*
+/// 2. **Memory Footprint:** Both `Duration` and `Instant` occupy 16 bytes in memory
+///    (tracking seconds and nanoseconds separately). By reducing time tracking to `u64`,
+///    the memory footprint of all time-related fields inside `GameState` is cut in half
+///    (8 bytes).
+/// 3. **CPU Register Efficiency:** An 8-byte `u64` fits perfectly into a single 64-bit
+///    CPU register. Passing a primitive `u64` through the `StageHandler` trait methods
+///    and rendering functions requires the absolute minimum amount of assembly,
+///    minimizing stack layout overhead and pointer offset lookups.
+pub const fn duration_to_ms(duration: &Duration) -> Millis {
+    duration.as_secs() * 1000 + duration.subsec_millis() as u64
 }

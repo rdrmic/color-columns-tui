@@ -4,11 +4,9 @@ mod instructions;
 mod paused;
 mod ready;
 
-use std::time::Duration;
-
 use ratatui::crossterm::event::KeyEvent;
 
-use crate::game_state::GameState;
+use crate::game_state::{GameState, Millis};
 
 pub use gameover::GameOverHandler;
 pub use gameplay::GameplayHandler;
@@ -18,9 +16,9 @@ pub use ready::ReadyHandler;
 
 const FAILED_TO_START_GAME_ERROR: &str = "Failed to start the game";
 
-const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
-const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(16);
-const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
+const FRAME_DURATION_IDLE: Millis = 3_600_000;
+const FRAME_DURATION_GAMEPLAY: Millis = 16;
+const FRAME_DURATION_PAUSED: Millis = 76;
 
 pub enum Stage {
     Ready(ReadyHandler),
@@ -32,7 +30,7 @@ pub enum Stage {
 
 pub trait StageHandler {
     fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage>;
-    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration;
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Millis;
     fn update(&mut self, game: &mut GameState) -> Option<Stage>;
 }
 
@@ -47,7 +45,7 @@ impl StageHandler for Stage {
         }
     }
 
-    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Millis {
         match self {
             Self::Ready(handler) => handler.time_before_next_tick(game),
             Self::Gameplay(handler) => handler.time_before_next_tick(game),

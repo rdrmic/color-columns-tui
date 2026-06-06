@@ -1,29 +1,28 @@
-use std::time::{Duration, Instant};
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
-    game_state::GameState,
+    game_state::{GameState, Millis},
     messages::Message,
     stage_handlers::{FRAME_DURATION_PAUSED, GameplayHandler, Stage, StageHandler},
 };
 
 pub struct PausedHandler {
-    start_time: Instant,
+    start_time: Millis,
 }
 
 impl PausedHandler {
-    const FLICKER_DURATION: u64 = FRAME_DURATION_PAUSED.as_millis() as u64;
+    const FLICKER_DURATION: Millis = FRAME_DURATION_PAUSED;
 
-    pub fn new(game: &mut GameState) -> Self {
+    pub const fn new(game: &mut GameState) -> Self {
         let message = Message::new_permanent("Paused...", [170, 170, 170]);
         game.set_message(Some(message));
 
-        Self { start_time: Instant::now() }
+        Self { start_time: game.current_time() }
     }
 
-    pub fn flicker_tick(&self) -> u64 {
-        self.start_time.elapsed().as_millis() as u64 / Self::FLICKER_DURATION
+    pub const fn flicker_tick(&self, game: &GameState) -> u64 {
+        let elapsed = game.current_time().saturating_sub(self.start_time);
+        elapsed / Self::FLICKER_DURATION
     }
 }
 
@@ -36,7 +35,7 @@ impl StageHandler for PausedHandler {
         None
     }
 
-    fn time_before_next_tick(&mut self, _game: &mut GameState) -> Duration {
+    fn time_before_next_tick(&mut self, _game: &mut GameState) -> Millis {
         FRAME_DURATION_PAUSED
     }
 

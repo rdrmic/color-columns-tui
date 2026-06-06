@@ -1,4 +1,7 @@
-use std::path::Path;
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use ratatui::{
     DefaultTerminal,
@@ -20,6 +23,7 @@ use crate::{
 pub struct App {
     stage: Stage,
     game: GameState,
+    start_time: Instant,
     is_running: bool,
 }
 
@@ -28,13 +32,15 @@ impl App {
         let mut game = GameState::new(app_state_dir_path)?;
         let stage = Stage::Ready(ReadyHandler::new(&mut game));
 
-        Ok(Self { stage, game, is_running: true })
+        Ok(Self { stage, game, start_time: Instant::now(), is_running: true })
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), errors::Error> {
         log::info!("Main loop is starting...");
 
         while self.is_running {
+            self.game.update_current_time(&self.start_time.elapsed());
+
             terminal
                 .draw(|frame| {
                     rendering::render(frame, &self.stage, &self.game);
@@ -42,7 +48,11 @@ impl App {
                 .context("Failed to draw to terminal")?;
 
             let event_waiting_time = self.stage.time_before_next_tick(&mut self.game);
-            if crossterm::event::poll(event_waiting_time)? {
+            let has_event = crossterm::event::poll(Duration::from_millis(event_waiting_time))?;
+
+            self.game.update_current_time(&self.start_time.elapsed());
+
+            if has_event {
                 self.handle_events(&crossterm::event::read()?);
             }
 

@@ -1,9 +1,7 @@
-use std::time::Duration;
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
-    game_state::GameState,
+    game_state::{GameState, Millis},
     stage_handlers::{FRAME_DURATION_IDLE, ReadyHandler, Stage, StageHandler},
 };
 
@@ -17,7 +15,7 @@ impl StageHandler for InstructionsHandler {
         None
     }
 
-    fn time_before_next_tick(&mut self, _game: &mut GameState) -> Duration {
+    fn time_before_next_tick(&mut self, _game: &mut GameState) -> Millis {
         FRAME_DURATION_IDLE
     }
 
