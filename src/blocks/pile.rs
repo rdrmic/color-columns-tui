@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Instant};
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
@@ -9,16 +9,18 @@ pub struct Pile {
     height: u8,
     grid: Vec<Option<Gem>>,
     matched_positions: HashSet<(u8, u8)>,
+    blinking_matches: BlinkingMatches,
 }
 
 impl Pile {
     pub fn new(width: u8, height: u8) -> Self {
-        Self { width, height, grid: vec![], matched_positions: HashSet::new() }
+        Self { width, height, grid: vec![], matched_positions: HashSet::new(), blinking_matches: BlinkingMatches::new() }
     }
 
     pub fn clear(&mut self) {
         self.grid = vec![None; (self.width * self.height) as usize];
         self.matched_positions.clear();
+        self.blinking_matches.reset();
     }
 
     pub fn lock(&mut self, column: Column) -> bool {
@@ -95,13 +97,11 @@ impl Pile {
         matches_counts_as_packed_bits
     }
 
-    pub fn clear_matches(&mut self) {
-        for (x, y) in self.matched_positions.drain() {
-            let idx = Self::calculate_grid_idx(x, y, self.width);
-            if let Some(slot) = self.grid.get_mut(idx) {
-                *slot = None;
-            }
+    pub fn clear_matches(&mut self) -> bool {
+        if !self.matched_positions.is_empty() && !self.blinking_matches.is_active() {
+            self.blinking_matches.start(self.width, &self.grid, &mut self.matched_positions);
         }
+        self.blinking_matches.update(self.width, &mut self.grid)
     }
 
     pub fn has_hanging_gems(&self) -> bool {
@@ -200,6 +200,64 @@ impl Pile {
                 self.get(nx, ny) == Some(gem)
             })
             .count()
+    }
+}
+
+// ============================================================================
+// Blinking matches
+// ============================================================================
+pub struct BlinkingMatches {
+    matched_gems: Vec<(u8, u8, Gem)>,
+    blink_time: Option<Instant>,
+}
+
+impl BlinkingMatches {
+    const BLINK_DURATION: u64 = 442;
+    const NUM_PHASES: u64 = 4;
+
+    const fn new() -> Self {
+        Self { matched_gems: Vec::new(), blink_time: None }
+    }
+
+    fn reset(&mut self) {
+        self.matched_gems.clear();
+        self.blink_time = None;
+    }
+
+    const fn is_active(&self) -> bool {
+        self.blink_time.is_some()
+    }
+
+    fn start(&mut self, width: u8, grid: &[Option<Gem>], match_positions: &mut HashSet<(u8, u8)>) {
+        for (x, y) in match_positions.drain() {
+            let idx = Pile::calculate_grid_idx(x, y, width);
+            if let Some(gem) = grid[idx] {
+                self.matched_gems.push((x, y, gem));
+            }
+        }
+
+        self.blink_time = Some(Instant::now());
+    }
+
+    fn update(&mut self, width: u8, grid: &mut [Option<Gem>]) -> bool {
+        let Some(blink_time) = self.blink_time else {
+            return false;
+        };
+
+        let elapsed_ms = blink_time.elapsed().as_millis() as u64;
+
+        let is_finished = elapsed_ms >= Self::BLINK_DURATION * Self::NUM_PHASES;
+        let is_black_phase = is_finished || !(elapsed_ms / Self::BLINK_DURATION).is_multiple_of(2);
+
+        for &(x, y, original_gem) in &self.matched_gems {
+            let idx = Pile::calculate_grid_idx(x, y, width);
+            grid[idx] = if is_black_phase { None } else { Some(original_gem) };
+        }
+        if is_finished {
+            self.reset();
+            return false;
+        }
+        true
     }
 }
 

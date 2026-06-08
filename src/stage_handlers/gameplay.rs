@@ -133,6 +133,7 @@ struct BlinkingLabel {
 
 impl BlinkingLabel {
     const BLINK_DURATION: u64 = 450;
+    const NUM_PHASES: u64 = 3;
 
     const fn new(initial_value: u32) -> Self {
         Self { value: initial_value, blink_time: None }
@@ -145,7 +146,7 @@ impl BlinkingLabel {
 
         let elapsed_ms = blink_time.elapsed().as_millis() as u64;
         let blink_state = (elapsed_ms / Self::BLINK_DURATION) % 2;
-        blink_state == 0
+        blink_state == 0 // black phase
     }
 
     fn update(&mut self, current_value: u32) {
@@ -156,7 +157,7 @@ impl BlinkingLabel {
 
         if let Some(blink_time) = self.blink_time {
             let elapsed_ms = blink_time.elapsed().as_millis() as u64;
-            if elapsed_ms >= Self::BLINK_DURATION * 3 {
+            if elapsed_ms >= Self::BLINK_DURATION * Self::NUM_PHASES {
                 self.finish_blink_time();
             }
         }

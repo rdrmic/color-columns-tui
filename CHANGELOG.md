@@ -1,3 +1,12 @@
+## 0.1.9 / 2026-06-09
+
+- Blink matches
+- Use toolchain `nightly-2026-06-08`
+
+```bash
+459 KiB (469,456 B)
+```
+
 ## 0.1.8 / 2026-06-06
 
 - Set terminal background color to black
@@ -28,7 +37,7 @@
 
 ## 0.1.6 / 2026-06-03
 
-- Enable blinking labels
+- Blink labels
 - Adjust messages' fading out
 - Derive `Copy` and `Clone` on appropriate structs and enums (which hold "plain" values and are <= 8 bytes B)
 - Rename `Game` to `GameState`

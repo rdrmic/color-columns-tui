@@ -111,7 +111,12 @@ impl GameState {
     }
 
     pub const fn current_tick_duration(&self) -> Duration {
-        self.current_tick_duration
+        match self.gameplay_state {
+            GameplayState::FallingColumn => self.current_tick_duration,
+
+            // TODO what about messages fading out?
+            _ => Duration::from_millis(33),
+        }
     }
 
     pub const fn message(&self) -> Option<&Message> {
@@ -209,7 +214,9 @@ impl GameState {
     }
 
     fn tick_clearing_matches(&mut self, bit_packed_points: u64) -> bool {
-        self.pile.clear_matches();
+        if self.pile.clear_matches() {
+            return true;
+        }
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
