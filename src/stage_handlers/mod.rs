@@ -18,8 +18,8 @@ pub use ready::ReadyHandler;
 
 const FAILED_TO_START_GAME_ERROR: &str = "Failed to start the game";
 
+pub const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(33);
 const FRAME_DURATION_IDLE: Duration = Duration::from_hours(1);
-const FRAME_DURATION_GAMEPLAY: Duration = Duration::from_millis(33);
 const FRAME_DURATION_PAUSED: Duration = Duration::from_millis(76);
 
 pub enum Stage {
@@ -31,39 +31,33 @@ pub enum Stage {
 }
 
 pub trait StageHandler {
-    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage>;
     fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration;
+    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage>;
     fn update(&mut self, game: &mut GameState) -> Option<Stage>;
 }
 
-impl StageHandler for Stage {
-    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage> {
-        match self {
-            Self::Ready(handler) => handler.handle_key_pressed_event(game, key_event),
-            Self::Gameplay(handler) => handler.handle_key_pressed_event(game, key_event),
-            Self::Paused(handler) => handler.handle_key_pressed_event(game, key_event),
-            Self::Instructions(handler) => handler.handle_key_pressed_event(game, key_event),
-            Self::GameOver(handler) => handler.handle_key_pressed_event(game, key_event),
+macro_rules! execute_handler_method {
+    ($self:ident, $method:ident $(, $args:expr)*) => {
+        match $self {
+            Self::Ready(handler) => handler.$method($($args),*),
+            Self::Gameplay(handler) => handler.$method($($args),*),
+            Self::Paused(handler) => handler.$method($($args),*),
+            Self::Instructions(handler) => handler.$method($($args),*),
+            Self::GameOver(handler) => handler.$method($($args),*),
         }
+    };
+}
+
+impl StageHandler for Stage {
+    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
+        execute_handler_method!(self, time_before_next_tick, game)
     }
 
-    fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
-        match self {
-            Self::Ready(handler) => handler.time_before_next_tick(game),
-            Self::Gameplay(handler) => handler.time_before_next_tick(game),
-            Self::Paused(handler) => handler.time_before_next_tick(game),
-            Self::Instructions(handler) => handler.time_before_next_tick(game),
-            Self::GameOver(handler) => handler.time_before_next_tick(game),
-        }
+    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage> {
+        execute_handler_method!(self, handle_key_pressed_event, game, key_event)
     }
 
     fn update(&mut self, game: &mut GameState) -> Option<Stage> {
-        match self {
-            Self::Ready(handler) => handler.update(game),
-            Self::Gameplay(handler) => handler.update(game),
-            Self::Paused(handler) => handler.update(game),
-            Self::Instructions(handler) => handler.update(game),
-            Self::GameOver(handler) => handler.update(game),
-        }
+        execute_handler_method!(self, update, game)
     }
 }

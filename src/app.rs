@@ -44,6 +44,10 @@ impl App {
             let event_waiting_time = self.stage.time_before_next_tick(&mut self.game);
             if crossterm::event::poll(event_waiting_time)? {
                 self.handle_events(&crossterm::event::read()?);
+
+                while crossterm::event::poll(std::time::Duration::ZERO)? {
+                    self.handle_events(&crossterm::event::read()?);
+                }
             }
 
             self.tick();
@@ -55,13 +59,6 @@ impl App {
     fn tick(&mut self) {
         if let Some(next_stage) = self.stage.update(&mut self.game) {
             self.stage = next_stage;
-        }
-
-        if let Some(msg) = self.game.message_mut()
-            && matches!(self.stage, Stage::Gameplay(_))
-            && !msg.tick()
-        {
-            self.game.set_message(None);
         }
     }
 

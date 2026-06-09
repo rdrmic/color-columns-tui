@@ -8,6 +8,7 @@ use crate::{
     errors::{self, Context},
     messages::Message,
     scoring::Scoring,
+    stage_handlers::FRAME_DURATION_GAMEPLAY,
 };
 
 enum GameplayState {
@@ -113,9 +114,7 @@ impl GameState {
     pub const fn current_tick_duration(&self) -> Duration {
         match self.gameplay_state {
             GameplayState::FallingColumn => self.current_tick_duration,
-
-            // TODO what about messages fading out?
-            _ => Duration::from_millis(33),
+            _ => FRAME_DURATION_GAMEPLAY,
         }
     }
 

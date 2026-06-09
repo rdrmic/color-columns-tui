@@ -1,3 +1,16 @@
+## 0.1.10 / 2026-06-09
+
+- Adjust blink durations for matches and labels
+- Isolate ticking for fading messages
+- Drain any remaining events in the buffer before drawing
+- Macroize `StageHandler` static dispatch delegation
+- Binary size optimizations:
+  - Use toolchain `nightly-2026-06-09` (-80 B)
+
+```bash
+459 KiB (469,904 B)
+```
+
 ## 0.1.9 / 2026-06-09
 
 - Blink matches
@@ -66,7 +79,7 @@
 - Reorganize layout to show level and in-game messages
 - In-game messages
 - Make `dev_console` take string literals AND strings to be formatted
-
+s
 ```bash
 460 KiB (470,816 B)
 ```

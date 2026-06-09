@@ -212,7 +212,7 @@ pub struct BlinkingMatches {
 }
 
 impl BlinkingMatches {
-    const BLINK_DURATION: u64 = 442;
+    const BLINK_DURATION: u64 = 374;
     const NUM_PHASES: u64 = 4;
 
     const fn new() -> Self {

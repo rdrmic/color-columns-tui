@@ -71,6 +71,12 @@ impl StageHandler for GameplayHandler {
 
         self.blinking_labels.update(game);
 
+        if let Some(msg) = game.message_mut()
+            && !msg.tick()
+        {
+            game.set_message(None);
+        }
+
         None
     }
 }
@@ -132,7 +138,7 @@ struct BlinkingLabel {
 }
 
 impl BlinkingLabel {
-    const BLINK_DURATION: u64 = 450;
+    const BLINK_DURATION: u64 = 475;
     const NUM_PHASES: u64 = 3;
 
     const fn new(initial_value: u32) -> Self {
