@@ -1,3 +1,15 @@
+## 0.1.11 / 2026-06-16
+
+- Binary size optimizations: (-6,528 B)
+  - Replaced `HashSet` with a 128-bit scalar bitmask (`[u64; 2]`)
+  - Replaced `Vec` buffers with fixed-size stack arrays
+  - Switched to native integer math (`usize`) to remove cast overhead
+  - Removed implicit bounds-checking branches via slice iteration
+
+```bash
+453 KiB (463,376 B)
+```
+
 ## 0.1.10 / 2026-06-09
 
 - Adjust blink durations for matches and labels

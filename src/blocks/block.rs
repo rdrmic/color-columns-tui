@@ -65,13 +65,13 @@ define_block_variants!(
 // Block
 // ============================================================================
 #[derive(Copy, Clone)]
-pub struct Block {
-    x: u8,
-    y: i8,
-    gem: Gem,
+pub struct GemBlock {
+    pub x: u8,
+    pub y: i8,
+    pub gem: Gem,
 }
 
-impl Block {
+impl GemBlock {
     pub const fn new(x: u8, y: i8, gem: Gem) -> Self {
         Self { x, y, gem }
     }
@@ -80,7 +80,7 @@ impl Block {
 // ============================================================================
 // Widget rendering
 // ============================================================================
-impl Widget for Block {
+impl Widget for GemBlock {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let x = area.x + u16::from(self.x) * 2;
         let Some(y) = area.y.checked_add_signed(i16::from(self.y)) else {

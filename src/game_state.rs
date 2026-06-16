@@ -29,10 +29,10 @@ pub struct GameState {
     rng: fastrand::Rng,
 }
 
-impl GameState {
-    pub const BOARD_WIDTH: u8 = 6;
-    pub const BOARD_HEIGHT: u8 = 13;
+pub const BOARD_WIDTH: u8 = 6;
+pub const BOARD_HEIGHT: u8 = 13;
 
+impl GameState {
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
     const MIN_TICK_DURATION: Duration = Duration::from_millis(50); // TODO determine it accurately with possible correction of ACCELERATION_FACTOR
     const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
@@ -45,7 +45,7 @@ impl GameState {
         Ok(Self {
             column_next: Self::create_column(&mut rng),
             column_falling: Column::placeholder(),
-            pile: Pile::new(Self::BOARD_WIDTH, Self::BOARD_HEIGHT),
+            pile: Pile::new(BOARD_WIDTH, BOARD_HEIGHT),
             scoring: Scoring::new(app_state_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             gameplay_state: GameplayState::FallingColumn,
@@ -135,29 +135,31 @@ impl GameState {
     }
 
     fn transition_next_column_to_falling(&mut self) {
-        let x = self.rng.u8(..Self::BOARD_WIDTH);
+        let x = self.rng.u8(..BOARD_WIDTH);
 
         let mut column_falling = std::mem::replace(&mut self.column_next, Self::create_column(&mut self.rng));
         column_falling.set_falling(x);
         self.column_falling = column_falling;
     }
 
+    #[allow(clippy::cast_possible_wrap)]
+    #[allow(clippy::cast_sign_loss)]
     fn get_available_distance_for_fall(&self, x_offset: i8) -> i8 {
-        let x_as_i8 = i8::try_from(self.column_falling.x()).expect("`x` should fit in `i8`");
+        let x_i8 = self.column_falling.x() as i8;
         let x = if x_offset == 0 {
-            x_as_i8
+            x_i8
         } else {
-            let x_moved = x_as_i8 + x_offset;
-            if x_moved < 0 || x_moved >= i8::try_from(Self::BOARD_WIDTH).expect("Board width should fit in `i8`") {
+            let x_moved = x_i8 + x_offset;
+            if !(0..BOARD_WIDTH as i8).contains(&x_moved) {
                 return -1;
             }
             x_moved
         };
 
-        let x = u8::try_from(x).expect("At this point, `x` must fit in `u8`");
+        let x = x as u8;
 
-        let first_occupied_y = (0..Self::BOARD_HEIGHT).find(|&y| self.pile.get(x, y).is_some()).unwrap_or(Self::BOARD_HEIGHT);
-        let first_occupied_y = i8::try_from(first_occupied_y).expect("Board height should fit in `i8`") - 1;
+        let first_occupied_y = (0..BOARD_HEIGHT).find(|&y| self.pile.get(x, y).is_some()).unwrap_or(BOARD_HEIGHT);
+        let first_occupied_y = first_occupied_y as i8 - 1;
 
         first_occupied_y - self.column_falling.y_bottom()
     }

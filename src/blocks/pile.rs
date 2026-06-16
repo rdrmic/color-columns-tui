@@ -1,34 +1,39 @@
-use std::{collections::HashSet, time::Instant};
+use std::time::Instant;
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use crate::blocks::{Block, Column, Direction, Gem, MAX_MATCHES_PER_DIRECTION, MIN_CONSECUTIVE_GEMS_TO_MATCH, MatchingStructure};
+use crate::{
+    blocks::{Column, Direction, Gem, GemBlock, MAX_MATCHES_PER_DIRECTION, MIN_CONSECUTIVE_GEMS_TO_MATCH, MatchingStructure},
+    game_state::{BOARD_HEIGHT, BOARD_WIDTH},
+};
+
+const NUM_GRID_CELLS: usize = (BOARD_WIDTH * BOARD_HEIGHT) as usize;
 
 pub struct Pile {
     width: u8,
     height: u8,
-    grid: Vec<Option<Gem>>,
-    matched_positions: HashSet<(u8, u8)>,
+    grid: [Option<Gem>; NUM_GRID_CELLS],
+    matched_positions: [u64; 2],
     blinking_matches: BlinkingMatches,
 }
 
 impl Pile {
-    pub fn new(width: u8, height: u8) -> Self {
-        Self { width, height, grid: vec![], matched_positions: HashSet::new(), blinking_matches: BlinkingMatches::new() }
+    pub const fn new(width: u8, height: u8) -> Self {
+        Self { width, height, grid: [None; NUM_GRID_CELLS], matched_positions: [0; 2], blinking_matches: BlinkingMatches::new() }
     }
 
-    pub fn clear(&mut self) {
-        self.grid = vec![None; (self.width * self.height) as usize];
-        self.matched_positions.clear();
+    pub const fn clear(&mut self) {
+        self.grid = [None; NUM_GRID_CELLS];
+        self.matched_positions = [0; 2];
         self.blinking_matches.reset();
     }
 
     pub fn lock(&mut self, column: Column) -> bool {
-        for (gem_x, gem_y, gem) in column.gems() {
-            if let Ok(gem_y) = u8::try_from(gem_y) {
-                let idx = Self::calculate_grid_idx(gem_x, gem_y, self.width);
+        for gem_block in column.gem_blocks() {
+            if let Ok(gem_y) = u8::try_from(gem_block.y) {
+                let idx = Self::calculate_grid_idx(gem_block.x, gem_y, self.width);
                 if let Some(slot) = self.grid.get_mut(idx) {
-                    *slot = Some(gem);
+                    *slot = Some(gem_block.gem);
                 }
             } else {
                 return false;
@@ -43,52 +48,75 @@ impl Pile {
     }
 
     const fn calculate_grid_idx(x: u8, y: u8, width: u8) -> usize {
-        (y * width + x) as usize
+        y as usize * width as usize + x as usize
     }
 
     // ============================================================================
     // Matches
     // ============================================================================
     pub fn find_matches(&mut self, structure: MatchingStructure) -> u64 {
+        // Initialize with a dummy value, but only read up to `check_count`
+        let mut gems_to_check = [GemBlock::new(0, 0, Gem::Ruby); NUM_GRID_CELLS];
+        let mut check_count = 0;
+
+        match structure {
+            MatchingStructure::Column(column) => {
+                for gem_block in column.gem_blocks() {
+                    if gem_block.y >= 0 {
+                        gems_to_check[check_count] = gem_block;
+                        check_count += 1;
+                    }
+                }
+            }
+            MatchingStructure::Pile => {
+                for x in 0..self.width {
+                    for y in 0..self.height {
+                        if let Some(gem) = self.get(x, y) {
+                            #[allow(clippy::cast_possible_wrap)]
+                            let y_i8 = y as i8;
+
+                            gems_to_check[check_count] = GemBlock::new(x, y_i8, gem);
+                            check_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+
         let mut matches_counts_as_packed_bits = 0;
         let mut outer_shift_offset = 36;
+        let mut matched_positions_buffer = [(0, 0); MAX_MATCHES_PER_DIRECTION];
 
         for direction in Direction::ALL {
             let mut match_counts_per_direction = 0;
             let mut shift_offset = 9;
 
-            let mut matched_positions_per_direction = HashSet::with_capacity(MAX_MATCHES_PER_DIRECTION);
+            let mut matched_positions_per_direction = [0u64; 2];
 
-            match structure {
-                MatchingStructure::Column(column) => {
-                    for (x, y, _) in column.gems() {
-                        if let Some(matched_positions) = u8::try_from(y).ok().and_then(|y| self.find_matches_from_gem_position(direction, x, y))
-                            && !matched_positions.iter().all(|(x, y)| matched_positions_per_direction.contains(&(*x, *y)))
-                        {
-                            matched_positions_per_direction.extend(&matched_positions);
-
-                            match_counts_per_direction |= (matched_positions.len() as u16) << shift_offset;
-                            shift_offset -= 3;
+            for &gem_block in &gems_to_check[..check_count] {
+                if let Some(len) = self.find_matches_from_gem_position(gem_block, direction, &mut matched_positions_buffer) {
+                    let mut new_match = false;
+                    for &(mx, my) in &matched_positions_buffer[..len] {
+                        let idx = Self::calculate_grid_idx(mx, my, self.width);
+                        // Bitmask check
+                        if (matched_positions_per_direction[idx >> 6] & (1 << (idx & 63))) == 0 {
+                            new_match = true;
+                            break;
                         }
                     }
-                }
-                MatchingStructure::Pile => {
-                    for x in 0..self.width {
-                        for y in 0..self.height {
-                            if let Some(matched_positions) = self.get(x, y).and_then(|_| self.find_matches_from_gem_position(direction, x, y))
-                                && !matched_positions.iter().all(|(x, y)| matched_positions_per_direction.contains(&(*x, *y)))
-                            {
-                                matched_positions_per_direction.extend(&matched_positions);
 
-                                match_counts_per_direction |= (matched_positions.len() as u16) << shift_offset;
-                                shift_offset -= 3;
-                            }
+                    if new_match {
+                        for &(mx, my) in &matched_positions_buffer[..len] {
+                            let idx = Self::calculate_grid_idx(mx, my, self.width);
+                            // Bitmask set
+                            matched_positions_per_direction[idx >> 6] |= 1 << (idx & 63);
+                            self.matched_positions[idx >> 6] |= 1u64 << (idx & 63);
                         }
+                        match_counts_per_direction |= (len as u16) << shift_offset;
+                        shift_offset -= 3;
                     }
                 }
             }
-
-            self.matched_positions.extend(&matched_positions_per_direction);
 
             matches_counts_as_packed_bits |= u64::from(match_counts_per_direction) << outer_shift_offset;
             outer_shift_offset -= 12;
@@ -98,8 +126,8 @@ impl Pile {
     }
 
     pub fn clear_matches(&mut self) -> bool {
-        if !self.matched_positions.is_empty() && !self.blinking_matches.is_active() {
-            self.blinking_matches.start(self.width, &self.grid, &mut self.matched_positions);
+        if self.matched_positions != [0; 2] && !self.blinking_matches.is_active() {
+            self.blinking_matches.start(self.width, self.height, &self.grid, &mut self.matched_positions);
         }
         self.blinking_matches.update(self.width, &mut self.grid)
     }
@@ -138,68 +166,71 @@ impl Pile {
         }
     }
 
-    #[allow(clippy::cast_possible_wrap)]
-    fn find_matches_from_gem_position(&self, (dx, dy): (i8, i8), x: u8, y: u8) -> Option<Vec<(u8, u8)>> {
-        let gem = self.get(x, y)?;
+    fn find_matches_from_gem_position(
+        &self,
+        gem_block: GemBlock,
+        direction: Direction,
+        matched_positions_buffer: &mut [(u8, u8); MAX_MATCHES_PER_DIRECTION],
+    ) -> Option<usize> {
+        let count_forward = self.count_consecutive_gems(gem_block, direction);
+        let count_reverse = self.count_consecutive_gems(gem_block, -direction);
+        let count = count_forward + count_reverse + 1;
 
-        let count_forward = self.count_consecutive_gems(x, y, gem, dx, dy);
-        let count_reverse = self.count_consecutive_gems(x, y, gem, -dx, -dy);
-        let count = count_forward + count_reverse + 1; // +1 for the center Gem
+        if count >= MIN_CONSECUTIVE_GEMS_TO_MATCH as i8 {
+            let gem_block_base_y = gem_block.y.unsigned_abs();
 
-        let mut matched_positions = Vec::<(u8, u8)>::with_capacity(MAX_MATCHES_PER_DIRECTION);
+            let mut len = 0;
 
-        if count >= MIN_CONSECUTIVE_GEMS_TO_MATCH {
-            // Add center Gem position
-            matched_positions.push((x, y));
+            matched_positions_buffer[len] = (gem_block.x, gem_block_base_y);
+            len += 1;
 
-            // Add forward direction matches
-            for i in 1..=count_forward {
-                let offset_x = i16::from(dx).saturating_mul(i as i16) as i8;
-                let offset_y = i16::from(dy).saturating_mul(i as i16) as i8;
+            len = Self::scan_for_matches(count_forward, direction, [gem_block.x, gem_block_base_y], matched_positions_buffer, len);
+            len = Self::scan_for_matches(count_reverse, -direction, [gem_block.x, gem_block_base_y], matched_positions_buffer, len);
 
-                if let (Some(nx), Some(ny)) = (x.checked_add_signed(offset_x), y.checked_add_signed(offset_y)) {
-                    matched_positions.push((nx, ny));
-                }
-            }
-
-            // Add reverse direction matches
-            for i in 1..=count_reverse {
-                let offset_x = i16::from(dx).saturating_mul(-(i as i16)) as i8;
-                let offset_y = i16::from(dy).saturating_mul(-(i as i16)) as i8;
-
-                if let (Some(nx), Some(ny)) = (x.checked_add_signed(offset_x), y.checked_add_signed(offset_y)) {
-                    matched_positions.push((nx, ny));
-                }
-            }
-
-            return Some(matched_positions);
+            return Some(len);
         }
-
         None
     }
 
+    #[inline(always)]
+    #[allow(clippy::inline_always, reason = "Binary golf - shaves off 64 B")]
+    fn scan_for_matches(
+        consecutive_gems_count: i8,
+        direction: Direction,
+        gem_block_coordinates: [u8; 2],
+        matched_positions_buffer: &mut [(u8, u8); MAX_MATCHES_PER_DIRECTION],
+        buffer_offset: usize,
+    ) -> usize {
+        let mut buffer_idx = buffer_offset;
+        for i in 1..=consecutive_gems_count {
+            let scan_x = gem_block_coordinates[0].wrapping_add_signed(direction.dx * i);
+            let scan_y = gem_block_coordinates[1].wrapping_add_signed(direction.dy * i);
+
+            matched_positions_buffer[buffer_idx] = (scan_x, scan_y);
+            buffer_idx += 1;
+        }
+        buffer_idx
+    }
+
     /// Count consecutive Gems of the same type in a given direction.
-    #[allow(clippy::maybe_infinite_iter)]
-    fn count_consecutive_gems(&self, x: u8, y: u8, gem: Gem, dx: i8, dy: i8) -> usize {
-        (1..)
-            .take_while(|i| {
-                let offset_x = i16::from(dx).saturating_mul(*i as i16) as i8;
-                let offset_y = i16::from(dy).saturating_mul(*i as i16) as i8;
+    fn count_consecutive_gems(&self, gem_block: GemBlock, direction: Direction) -> i8 {
+        let mut x = gem_block.x;
+        let mut y = gem_block.y.unsigned_abs();
 
-                let Some(nx) = x.checked_add_signed(offset_x) else {
-                    return false;
-                };
-                let Some(ny) = y.checked_add_signed(offset_y) else {
-                    return false;
-                };
+        let mut count = 0_i8;
+        loop {
+            let scan_x = x.wrapping_add_signed(direction.dx);
+            let scan_y = y.wrapping_add_signed(direction.dy);
 
-                if nx >= self.width || ny >= self.height {
-                    return false;
-                }
-
-                self.get(nx, ny) == Some(gem)
-            })
-            .count()
+            if scan_x < self.width && self.get(scan_x, scan_y) == Some(gem_block.gem) {
+                x = scan_x;
+                y = scan_y;
+                count += 1;
+            } else {
+                break;
+            }
+        }
+        count
     }
 }
 
@@ -207,7 +238,8 @@ impl Pile {
 // Blinking matches
 // ============================================================================
 pub struct BlinkingMatches {
-    matched_gems: Vec<(u8, u8, Gem)>,
+    matched_gems: [(u8, u8, Gem); NUM_GRID_CELLS],
+    matched_count: usize,
     blink_time: Option<Instant>,
 }
 
@@ -216,11 +248,11 @@ impl BlinkingMatches {
     const NUM_PHASES: u64 = 4;
 
     const fn new() -> Self {
-        Self { matched_gems: Vec::new(), blink_time: None }
+        Self { matched_gems: [(0, 0, Gem::Ruby); NUM_GRID_CELLS], matched_count: 0, blink_time: None }
     }
 
-    fn reset(&mut self) {
-        self.matched_gems.clear();
+    const fn reset(&mut self) {
+        self.matched_count = 0;
         self.blink_time = None;
     }
 
@@ -228,14 +260,21 @@ impl BlinkingMatches {
         self.blink_time.is_some()
     }
 
-    fn start(&mut self, width: u8, grid: &[Option<Gem>], match_positions: &mut HashSet<(u8, u8)>) {
-        for (x, y) in match_positions.drain() {
-            let idx = Pile::calculate_grid_idx(x, y, width);
-            if let Some(gem) = grid[idx] {
-                self.matched_gems.push((x, y, gem));
+    fn start(&mut self, width: u8, height: u8, grid: &[Option<Gem>], match_positions: &mut [u64; 2]) {
+        for y in 0..height {
+            for x in 0..width {
+                let idx = Pile::calculate_grid_idx(x, y, width);
+                // Check using the 2-word mask
+                if let Some(gem) = grid[idx]
+                    && (match_positions[idx >> 6] & (1u64 << (idx & 63))) != 0
+                {
+                    self.matched_gems[self.matched_count] = (x, y, gem);
+                    self.matched_count += 1;
+                }
             }
         }
-
+        // Clear the mask
+        *match_positions = [0; 2];
         self.blink_time = Some(Instant::now());
     }
 
@@ -249,10 +288,11 @@ impl BlinkingMatches {
         let is_finished = elapsed_ms >= Self::BLINK_DURATION * Self::NUM_PHASES;
         let is_black_phase = is_finished || !(elapsed_ms / Self::BLINK_DURATION).is_multiple_of(2);
 
-        for &(x, y, original_gem) in &self.matched_gems {
+        for &(x, y, original_gem) in &self.matched_gems[..self.matched_count] {
             let idx = Pile::calculate_grid_idx(x, y, width);
             grid[idx] = if is_black_phase { None } else { Some(original_gem) };
         }
+
         if is_finished {
             self.reset();
             return false;
@@ -269,7 +309,7 @@ impl Widget for &Pile {
         for y in 0..self.height {
             for x in 0..self.width {
                 if let (Some(gem), Ok(y)) = (self.get(x, y), i8::try_from(y)) {
-                    Block::new(x, y, gem).render(area, buf);
+                    GemBlock::new(x, y, gem).render(area, buf);
                 }
             }
         }

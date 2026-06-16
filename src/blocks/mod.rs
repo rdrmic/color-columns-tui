@@ -1,4 +1,4 @@
-pub use block::{Block, Gem};
+pub use block::{Gem, GemBlock};
 pub use column::{Column, FallingColumnPlaceholder};
 pub use num_matches_unpacking::unpack_matches_points;
 pub use pile::Pile;
@@ -20,15 +20,27 @@ pub enum MatchingStructure<'a> {
 }
 
 #[derive(Copy, Clone)]
-struct Direction;
+struct Direction {
+    pub dx: i8,
+    pub dy: i8,
+}
 
 impl Direction {
-    const HORIZONTAL: (i8, i8) = (1, 0);
-    const VERTICAL: (i8, i8) = (0, 1);
-    const SLASH: (i8, i8) = (1, 1);
-    const BACKSLASH: (i8, i8) = (1, -1);
+    const HORIZONTAL: Self = Self { dx: 1, dy: 0 };
+    const VERTICAL: Self = Self { dx: 0, dy: 1 };
+    const SLASH: Self = Self { dx: 1, dy: 1 };
+    const BACKSLASH: Self = Self { dx: 1, dy: -1 };
 
-    const ALL: [(i8, i8); 4] = [Self::HORIZONTAL, Self::VERTICAL, Self::SLASH, Self::BACKSLASH];
+    const ALL: [Self; 4] = [Self::HORIZONTAL, Self::VERTICAL, Self::SLASH, Self::BACKSLASH];
+}
+
+impl std::ops::Neg for Direction {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self { dx: -self.dx, dy: -self.dy }
+    }
 }
 
 pub mod num_matches_unpacking {

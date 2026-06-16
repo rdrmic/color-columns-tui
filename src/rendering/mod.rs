@@ -9,8 +9,8 @@ use ratatui::{
 #[cfg(feature = "dev-console")]
 use crate::logging;
 use crate::{
-    blocks::{self, Gem},
-    game_state::GameState,
+    blocks::{Gem, GemBlock},
+    game_state::{BOARD_HEIGHT, BOARD_WIDTH, GameState},
     stage_handlers::Stage,
 };
 
@@ -197,10 +197,10 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Sta
     if let Stage::Paused(pause_handler) = stage {
         // Next column with random colors
         let flicker_tick = pause_handler.flicker_tick();
-        for (x, y, _) in game.get_next_column().gems() {
-            let seed = seed_for_randomizing_next_column_blocks(flicker_tick, x, y);
+        for gem_block in game.get_next_column().gem_blocks() {
+            let seed = seed_for_randomizing_next_column_blocks(flicker_tick, gem_block.x, gem_block.y);
             let flickered_gem = Gem::random_for_pause(seed);
-            frame.render_widget(blocks::Block::new(0, y, flickered_gem), right_aligned_area);
+            frame.render_widget(GemBlock::new(0, gem_block.y, flickered_gem), right_aligned_area);
         }
     } else {
         frame.render_widget(game.get_next_column(), right_aligned_area);
@@ -243,22 +243,23 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
         let flicker_tick = pause_handler.flicker_tick();
 
         // Falling column with random colors
-        for (x, y, _) in game.get_falling_column().gems() {
-            if y >= 0 {
-                let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, x, y);
+        for gem_block in game.get_falling_column().gem_blocks() {
+            if gem_block.y >= 0 {
+                let seed = seed_for_randomizing_falling_column_blocks(flicker_tick, gem_block.x, gem_block.y);
                 let flickered_gem = Gem::random_for_pause(seed);
-                frame.render_widget(blocks::Block::new(x, y, flickered_gem), board_inner_area);
+                frame.render_widget(GemBlock::new(gem_block.x, gem_block.y, flickered_gem), board_inner_area);
             }
         }
 
         // Pile with random colors
-        for y in 0..GameState::BOARD_HEIGHT {
-            let y_as_i8 = i8::try_from(y).expect("Every y position in the pile should fit in `i8`");
-            for x in 0..GameState::BOARD_WIDTH {
+        for y in 0..BOARD_HEIGHT {
+            #[allow(clippy::cast_possible_wrap)]
+            let y_i8 = y as i8;
+            for x in 0..BOARD_WIDTH {
                 if game.get_pile().get(x, y).is_some() {
                     let seed = seed_for_randomizing_pile_blocks(flicker_tick, x, y);
                     let flickered_gem = Gem::random_for_pause(seed);
-                    frame.render_widget(blocks::Block::new(x, y_as_i8, flickered_gem), board_inner_area);
+                    frame.render_widget(GemBlock::new(x, y_i8, flickered_gem), board_inner_area);
                 }
             }
         }
