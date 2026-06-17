@@ -34,8 +34,8 @@ pub const BOARD_HEIGHT: u8 = 13;
 
 impl GameState {
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
-    const MIN_TICK_DURATION: Duration = Duration::from_millis(50); // TODO determine it accurately with possible correction of ACCELERATION_FACTOR
-    const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
+    const MIN_TICK_DURATION: Duration = Duration::from_millis(50);
+    const ACCELERATION_FACTOR: u8 = 95; // Reduce the current tick duration by 5%
 
     pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
         let app_state_dir_path = app_state_dir_path.map(PathBuf::from);

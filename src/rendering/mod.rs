@@ -53,7 +53,6 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
 }
 
 fn set_bg_and_fg_colors(frame: &mut Frame, frame_area: Rect) {
-    // TODO unify/structurize colors throughout the app
     frame.buffer_mut().set_style(frame_area, Style::default().bg(Color::Black).fg(Color::Rgb(0, 225, 0)));
 }
 
