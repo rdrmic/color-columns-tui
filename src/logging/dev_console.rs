@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![cfg(feature = "dev-console")]
 
 use std::{
@@ -14,14 +13,16 @@ use ratatui::{
     Frame,
     crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind},
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     text::Line,
-    widgets::{Block, Borders, Padding, Paragraph},
+    widgets::{Block, Padding, Paragraph},
 };
 
-// ============================================================================
-// Dev Console
-// ============================================================================
+use crate::palette;
+
+// =============================================================================
+// Dev console
+// =============================================================================
 const MAX_CONSOLE_LOG_LINES: usize = 1024;
 
 struct DevConsoleState {
@@ -67,15 +68,15 @@ pub fn draw(frame: &mut Frame, area: Rect) {
     let paragraph = {
         let mut console = acquire_console_mutex();
 
-        // process any logs queued by macros before drawing
+        // Process any logs queued by macros before drawing
         flush_messages_as_lines(&mut console);
 
         let block = Block::bordered()
             .title(format!(" Navigate history (last {MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line; resets auto-scroll) "))
-            .style(Style::default().fg(Color::Indexed(40)))
+            .style(Style::default().fg(palette::DEV_CONSOLE_BORDER))
             .padding(Padding::horizontal(1));
 
-        // save this for the input handler to use later
+        // Save this for the input handler to use later
         console.last_known_inner_height = block.inner(area).height;
 
         let max_scroll_possible = calculate_max_scroll_possible(&console);
@@ -113,9 +114,9 @@ fn handle_scrolling_down(console: &mut DevConsoleState) {
     }
 }
 
-// ============================================================================
-// Channeling Log Messages
-// ============================================================================
+// =============================================================================
+// Channeling log messages
+// =============================================================================
 struct LogMessage {
     msg: Cow<'static, str>,
     color: PrintColor,
@@ -128,6 +129,7 @@ static LOG_CHANNEL: LazyLock<(Sender<LogMessage>, Mutex<Receiver<LogMessage>>)> 
 });
 
 /// Sends message to the log channel (used by `dev_*!` macros in mod.rs).
+#[allow(unused)]
 pub fn send_log_message(msg: Cow<'static, str>, color: PrintColor) {
     let (tx, _) = &*LOG_CHANNEL;
     let _ = tx.send(LogMessage { msg, color });
@@ -146,9 +148,9 @@ fn flush_messages_as_lines(console: &mut DevConsoleState) {
     }
 }
 
-// ============================================================================
+// =============================================================================
 // Print colors
-// ============================================================================
+// =============================================================================
 #[derive(Copy, Clone)]
 pub enum PrintColor {
     Gray,
@@ -160,10 +162,10 @@ pub enum PrintColor {
 impl From<PrintColor> for Style {
     fn from(color: PrintColor) -> Self {
         match color {
-            PrintColor::Gray => Self::new().fg(Color::Gray),
-            PrintColor::Cyan => Self::new().fg(Color::Cyan),
-            PrintColor::Yellow => Self::new().fg(Color::Yellow),
-            PrintColor::Red => Self::new().fg(Color::Red),
+            PrintColor::Gray => Self::new().fg(palette::DEV_CONSOLE_GRAY),
+            PrintColor::Cyan => Self::new().fg(palette::DEV_CONSOLE_CYAN),
+            PrintColor::Yellow => Self::new().fg(palette::DEV_CONSOLE_YELLOW),
+            PrintColor::Red => Self::new().fg(palette::DEV_CONSOLE_RED),
         }
     }
 }

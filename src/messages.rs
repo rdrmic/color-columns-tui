@@ -2,11 +2,11 @@ use std::time::Instant;
 
 use ratatui::style::Color;
 
-use crate::stage_handlers::FRAME_DURATION_GAMEPLAY;
+use crate::{palette::in_game_messages, stage_handlers::FRAME_DURATION_GAMEPLAY};
 
 pub struct Message {
     text: &'static str,
-    rgb: [u8; 3],
+    color: MessageColor,
     opacity_percent: u8,
     num_ticks_while_opaque: u8,
     fade_percent_per_tick: u8,
@@ -14,12 +14,12 @@ pub struct Message {
 }
 
 impl Message {
-    pub const fn new_fading(text: &'static str, rgb: [u8; 3], num_ticks_while_opaque: u8, fade_percent_per_tick: u8) -> Self {
-        Self { text, rgb, opacity_percent: 100, num_ticks_while_opaque, fade_percent_per_tick, fading_time: None }
+    pub const fn new_fading(text: &'static str, color: MessageColor, num_ticks_while_opaque: u8, fade_percent_per_tick: u8) -> Self {
+        Self { text, color, opacity_percent: 100, num_ticks_while_opaque, fade_percent_per_tick, fading_time: None }
     }
 
-    pub const fn new_permanent(text: &'static str, rgb: [u8; 3]) -> Self {
-        Self { text, rgb, opacity_percent: 100, num_ticks_while_opaque: 0, fade_percent_per_tick: 0, fading_time: None }
+    pub const fn new_permanent(text: &'static str, color: MessageColor) -> Self {
+        Self { text, color, opacity_percent: 100, num_ticks_while_opaque: 0, fade_percent_per_tick: 0, fading_time: None }
     }
 
     pub const fn text(&self) -> &'static str {
@@ -27,10 +27,7 @@ impl Message {
     }
 
     pub fn color(&self) -> Color {
-        let opacity_percent = u16::from(self.opacity_percent);
-
-        let [r, g, b] = self.rgb.map(|channel| ((u16::from(channel) * opacity_percent) / 100) as u8);
-        Color::Rgb(r, g, b)
+        self.color.calculate(self.opacity_percent)
     }
 
     pub fn tick(&mut self) -> bool {
@@ -56,6 +53,46 @@ impl Message {
             true
         } else {
             false
+        }
+    }
+}
+
+// =============================================================================
+// Message colors
+// =============================================================================
+#[derive(Copy, Clone)]
+pub enum MessageColor {
+    GetReady,
+    LevelUp,
+    Paused,
+    GameOver,
+}
+
+impl MessageColor {
+    #[cfg(not(target_os = "macos"))]
+    pub fn calculate(self, opacity_percent: u8) -> Color {
+        // Returns `[u8; 3]` RGB components
+        let rgb = match self {
+            Self::GetReady => in_game_messages::RGB_GET_READY,
+            Self::LevelUp => in_game_messages::RGB_LEVEL_UP,
+            Self::Paused => in_game_messages::RGB_PAUSED,
+            Self::GameOver => in_game_messages::RGB_GAME_OVER,
+        };
+
+        let opacity = u16::from(opacity_percent);
+
+        let [r, g, b] = rgb.map(|channel| ((u16::from(channel) * opacity) / 100) as u8);
+        Color::Rgb(r, g, b)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub const fn calculate(self, _opacity_percent: u8) -> Color {
+        // Returns `Color::indexed` colors
+        match self {
+            Self::GetReady => in_game_messages::RGB_GET_READY,
+            Self::LevelUp => in_game_messages::RGB_LEVEL_UP,
+            Self::Paused => in_game_messages::RGB_PAUSED,
+            Self::GameOver => in_game_messages::RGB_GAME_OVER,
         }
     }
 }

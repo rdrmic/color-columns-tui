@@ -1,10 +1,27 @@
+## 1.1.12 / 2026-07-14
+
+- Add support for macOS and Windows terminals
+- Fix game board rendering in Widows "legacy" and macOS terminals
+- Introduce and apply color palettes for macOS + other OSs
+- Add recognition of terminals' Emoji support
+- Render Instruction screen depending of terminal Emoji support
+- Make creating / fetching data directory optional
+- Add terminal message if there are issues with the data directory
+- Bump Ratatui version: 0.30.1 -> 0.30.2
+- Split `main.rs` into `data_dir.rs` and `terminal.rs`
+- Add `LICENSE.md`
+
+```bash
+455 KiB (465,280 B)
+```
+
 ## 0.1.11 / 2026-06-16
 
 - Binary size optimizations: (-6,528 B)
-  - Replaced `HashSet` with a 128-bit scalar bitmask (`[u64; 2]`)
-  - Replaced `Vec` buffers with fixed-size stack arrays
-  - Switched to native integer math (`usize`) to remove cast overhead
-  - Removed implicit bounds-checking branches via slice iteration
+  - Replace `HashSet` with a 128-bit scalar bitmask (`[u64; 2]`)
+  - Replace `Vec` buffers with fixed-size stack arrays
+  - Switch to native integer math (`usize`) to remove cast overhead
+  - Remove implicit bounds-checking branches via slice iteration
 
 ```bash
 453 KiB (463,376 B)
@@ -43,7 +60,6 @@
 - Reorganize top-most files' statements
 - Improve `.cargo/config.nightly.toml`
 - Bump Ratatui version: 0.30.0 -> 0.30.1
-- `cargo update`
 
 ```bash
 458 KiB (468,480 B)
@@ -67,7 +83,6 @@
 - Derive `Copy` and `Clone` on appropriate structs and enums (which hold "plain" values and are <= 8 bytes B)
 - Rename `Game` to `GameState`
 - Tidy up comments and remove unnecessary clippy allow annotation
-- `cargo update`
 
 ```bash
 459 KiB (469,504 B)
@@ -78,7 +93,6 @@
 - Improve messages' fading out
 - Clean up TODOs and FIXMEs
 - Bump Rust version: 1.95.0 -> 1.96.0
-- `cargo update`
 - Binary size optimizations:
   - Use toolchain `nightly-2026-06-01` (-1,712 B)
 
@@ -91,7 +105,7 @@
 - Reorganize layout to show level and in-game messages
 - In-game messages
 - Make `dev_console` take string literals AND strings to be formatted
-s
+
 ```bash
 460 KiB (470,816 B)
 ```
@@ -218,7 +232,6 @@ s
 - Add terminal size checking and accompanying in-console user message
 - Improve layout areas handling
 - Optimize and improve keys legend mechanism
-- `cargo update`
 
 ```bash
 630 KiB (644,232 B)

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{blocks::unpack_matches_points, errors};
+use crate::{blocks::num_matches_unpacking, errors};
 
 pub struct Scoring {
     level: u16,
@@ -18,13 +18,13 @@ impl Scoring {
     const HIGHSCORE_FILE_NAME: &str = "hs";
 
     #[rustfmt::skip]
-    pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
+    pub fn new(app_data_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
         Ok(
             Self {
                 level: 1,
                 score: 0,
                 max_combo: 0,
-                highscore: Self::read_highscore_from_file(app_state_dir_path)?,
+                highscore: Self::read_highscore_from_file(app_data_dir_path)?,
                 accumulated_points: 0,
                 cascade_count: 0,
             }
@@ -32,7 +32,7 @@ impl Scoring {
     }
 
     pub fn add(&mut self, bit_packed_points: u64) {
-        let all_matches_points = unpack_matches_points(bit_packed_points);
+        let all_matches_points = num_matches_unpacking::unpack_matches_points(bit_packed_points);
 
         let mut calculated_points_per_direction = [0; 4];
         for direction_points in all_matches_points.into_iter().enumerate() {
@@ -111,32 +111,31 @@ impl Scoring {
         }
     }
 
-    // ============================================================================
+    // =============================================================================
     // Highscore: reading from and writing to file
-    // ============================================================================
-    pub fn write_highscore_to_file(&self, app_state_dir_path: Option<&Path>) -> Result<(), errors::Error> {
-        let file_path = Self::get_highscore_file_path(app_state_dir_path)?;
-
-        let mut file = std::fs::File::create(file_path)?;
-        write!(file, "{}", self.highscore())?;
+    // =============================================================================
+    pub fn write_highscore_to_file(&self, app_data_dir_path: Option<&Path>) -> Result<(), errors::Error> {
+        if let Some(file_path) = Self::get_highscore_file_path(app_data_dir_path) {
+            let mut file = std::fs::File::create(file_path)?;
+            write!(file, "{}", self.highscore())?;
+        }
         Ok(())
     }
 
-    fn read_highscore_from_file(app_state_dir_path: Option<&Path>) -> Result<u32, errors::Error> {
-        let file_path = Self::get_highscore_file_path(app_state_dir_path)?;
-
-        let contents = match std::fs::read_to_string(&file_path) {
-            Ok(contents) => contents,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(0),
-            Err(err) => return Err(err.into()),
+    fn read_highscore_from_file(app_data_dir_path: Option<&Path>) -> Result<u32, errors::Error> {
+        let Some(file_path) = Self::get_highscore_file_path(app_data_dir_path) else {
+            return Ok(0);
         };
 
-        let highscore = contents.trim().parse::<u32>()?;
-        Ok(highscore)
+        match std::fs::read_to_string(&file_path) {
+            Ok(contents) => Ok(contents.trim().parse::<u32>()?),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(0),
+            Err(err) => Err(err.into()),
+        }
     }
 
-    fn get_highscore_file_path(app_state_dir_path: Option<&Path>) -> Result<PathBuf, errors::Error> {
-        let path = app_state_dir_path.ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "App state directory path is missing"))?;
-        Ok(path.join(Self::HIGHSCORE_FILE_NAME))
+    #[allow(clippy::single_option_map)]
+    fn get_highscore_file_path(app_data_dir_path: Option<&Path>) -> Option<PathBuf> {
+        app_data_dir_path.map(|path| path.join(Self::HIGHSCORE_FILE_NAME))
     }
 }

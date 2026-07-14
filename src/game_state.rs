@@ -6,11 +6,12 @@ use std::{
 use crate::{
     blocks::{Column, FallingColumnPlaceholder, MatchingStructure, Pile},
     errors::{self, Context},
-    messages::Message,
+    messages::{Message, MessageColor},
     scoring::Scoring,
     stage_handlers::FRAME_DURATION_GAMEPLAY,
 };
 
+#[derive(Copy, Clone)]
 enum GameplayState {
     FallingColumn,
     ClearingMatches(u64),
@@ -25,7 +26,7 @@ pub struct GameState {
     current_tick_duration: Duration,
     gameplay_state: GameplayState,
     message: Option<Message>,
-    app_state_dir_path: Option<PathBuf>,
+    app_data_dir_path: Option<PathBuf>,
     rng: fastrand::Rng,
 }
 
@@ -34,11 +35,11 @@ pub const BOARD_HEIGHT: u8 = 13;
 
 impl GameState {
     const INITIAL_TICK_DURATION: Duration = Duration::from_millis(750);
-    const MIN_TICK_DURATION: Duration = Duration::from_millis(50); // TODO determine it accurately with possible correction of ACCELERATION_FACTOR
-    const ACCELERATION_FACTOR: u8 = 95; // reduce the current tick duration by 5%
+    const MIN_TICK_DURATION: Duration = Duration::from_millis(50);
+    const ACCELERATION_FACTOR: u8 = 95; // Reduce the current tick duration by 5%
 
-    pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
-        let app_state_dir_path = app_state_dir_path.map(PathBuf::from);
+    pub fn new(app_data_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
+        let app_data_dir_path = app_data_dir_path.map(PathBuf::from);
 
         let mut rng = create_rng()?;
 
@@ -46,18 +47,18 @@ impl GameState {
             column_next: Self::create_column(&mut rng),
             column_falling: Column::placeholder(),
             pile: Pile::new(BOARD_WIDTH, BOARD_HEIGHT),
-            scoring: Scoring::new(app_state_dir_path.as_deref())?,
+            scoring: Scoring::new(app_data_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             gameplay_state: GameplayState::FallingColumn,
             message: None,
-            app_state_dir_path,
+            app_data_dir_path,
             rng,
         })
     }
 
     pub fn start(&mut self) -> Result<(), errors::Error> {
         self.pile.clear();
-        self.scoring = Scoring::new(self.app_state_dir_path.as_deref())?;
+        self.scoring = Scoring::new(self.app_data_dir_path.as_deref())?;
         self.current_tick_duration = Self::INITIAL_TICK_DURATION;
         self.gameplay_state = GameplayState::FallingColumn;
         self.transition_next_column_to_falling();
@@ -171,11 +172,11 @@ impl GameState {
     }
 
     fn write_highscore_to_file(&self) {
-        let _ = self.scoring.write_highscore_to_file(self.app_state_dir_path.as_deref()).inspect_err(|e| log::error!("{e}"));
+        let _ = self.scoring.write_highscore_to_file(self.app_data_dir_path.as_deref()).inspect_err(|e| log::error!("{e}"));
     }
-    // ============================================================================
+    // =============================================================================
     // Ticks
-    // ============================================================================
+    // =============================================================================
     pub fn tick(&mut self) -> bool {
         let is_gameplay_running = match self.gameplay_state {
             GameplayState::FallingColumn => self.tick_falling_column(),
@@ -221,7 +222,7 @@ impl GameState {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading("Level up!", [255, 135, 0], 28, 5);
+            let message = Message::new_fading("Level up!", MessageColor::LevelUp, 28, 5);
             self.set_message(Some(message));
 
             self.accelerate();
@@ -252,9 +253,9 @@ impl GameState {
     }
 }
 
-// ============================================================================
+// =============================================================================
 // RNG
-// ============================================================================
+// =============================================================================
 #[rustfmt::skip]
 fn create_rng() -> Result<fastrand::Rng, errors::Error> {
     let now = SystemTime::now();

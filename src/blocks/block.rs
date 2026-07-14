@@ -1,13 +1,10 @@
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Style},
-    widgets::Widget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
-// ============================================================================
+use crate::palette;
+
+// =============================================================================
 // Block variants (Gems)
-// ============================================================================
+// =============================================================================
 macro_rules! define_block_variants {
     ($($gem:ident => $style:expr),*) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
@@ -53,17 +50,17 @@ macro_rules! define_block_variants {
 }
 
 define_block_variants!(
-    Ruby     => Style::new().bg(Color::Red),
-    Amber    => Style::new().bg(Color::Rgb(255, 165, 0)),
-    Topaz    => Style::new().bg(Color::Yellow),
-    Emerald  => Style::new().bg(Color::Green),
-    Sapphire => Style::new().bg(Color::Blue),
-    Amethyst => Style::new().bg(Color::Magenta)
+    Ruby     => Style::new().bg(palette::GEM_RUBY),
+    Amber    => Style::new().bg(palette::GEM_AMBER),
+    Topaz    => Style::new().bg(palette::GEM_TOPAZ),
+    Emerald  => Style::new().bg(palette::GEM_EMERALD),
+    Sapphire => Style::new().bg(palette::GEM_SAPPHIRE),
+    Amethyst => Style::new().bg(palette::GEM_AMETHYST)
 );
 
-// ============================================================================
-// Block
-// ============================================================================
+// =============================================================================
+// Gem block
+// =============================================================================
 #[derive(Copy, Clone)]
 pub struct GemBlock {
     pub x: u8,
@@ -77,9 +74,9 @@ impl GemBlock {
     }
 }
 
-// ============================================================================
+// =============================================================================
 // Widget rendering
-// ============================================================================
+// =============================================================================
 impl Widget for GemBlock {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let x = area.x + u16::from(self.x) * 2;

@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, HorizontalAlignment, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Text},
     widgets::{Block, Borders, Padding, Paragraph, Wrap},
 };
@@ -11,6 +11,7 @@ use crate::logging;
 use crate::{
     blocks::{Gem, GemBlock},
     game_state::{BOARD_HEIGHT, BOARD_WIDTH, GameState},
+    palette,
     stage_handlers::Stage,
 };
 
@@ -21,14 +22,14 @@ mod paused_ui;
 mod ready_ui;
 
 #[cfg(feature = "dev-console")]
-pub const MIN_WINDOW_WIDTH: u16 = 160;
+pub const MIN_WINDOW_WIDTH: u16 = 140;
 #[cfg(not(feature = "dev-console"))]
 pub const MIN_WINDOW_WIDTH: u16 = 29;
 pub const MIN_WINDOW_HEIGHT: u16 = 27;
 
-// ============================================================================
+// =============================================================================
 // Entry point for rendering
-// ============================================================================
+// =============================================================================
 pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
     let frame_area = frame.area();
 
@@ -53,8 +54,7 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
 }
 
 fn set_bg_and_fg_colors(frame: &mut Frame, frame_area: Rect) {
-    // TODO unify/structurize colors throughout the app
-    frame.buffer_mut().set_style(frame_area, Style::default().bg(Color::Black).fg(Color::Rgb(0, 225, 0)));
+    frame.buffer_mut().set_style(frame_area, Style::default().bg(palette::UI_CANVAS_BG).fg(palette::UI_CANVAS_FG));
 }
 
 fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &GameState, stage: &Stage) {
@@ -75,35 +75,35 @@ fn draw_footer(frame: &mut Frame, area: Rect, stage: &Stage) {
     }
 }
 
-// ============================================================================
+// =============================================================================
 // Terminal window size check
-// ============================================================================
+// =============================================================================
 const fn is_terminal_window_too_small(area: Rect) -> bool {
     area.width < MIN_WINDOW_WIDTH || area.height < MIN_WINDOW_HEIGHT
 }
 
 fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
     let msg = vec![
-        Line::styled("Terminal window too small!", Color::Red),
+        Line::styled("Terminal window too small!", palette::CONSOLE_TEXT_ERROR),
         Line::from(""),
-        Line::styled(format!("Required: {MIN_WINDOW_WIDTH}x{MIN_WINDOW_HEIGHT}"), Color::Green),
-        Line::styled(format!("Current:  {}x{}", area.width, area.height), Color::Red),
+        Line::styled(format!("Required: {MIN_WINDOW_WIDTH}x{MIN_WINDOW_HEIGHT}"), palette::CONSOLE_TEXT_INFO),
+        Line::styled(format!("Current:  {}x{}", area.width, area.height), palette::CONSOLE_TEXT_ERROR),
         Line::from(""),
-        Line::styled("Please resize the window to play.", Color::Green),
+        Line::styled("Please resize the window to play.", palette::CONSOLE_TEXT_INFO),
     ];
     frame.render_widget(
         Paragraph::new(msg)
-            .style(Style::default().fg(Color::Red))
-            .block(Block::bordered().border_style(Style::default().fg(Color::Indexed(240))))
+            .style(Style::default().fg(palette::CONSOLE_TEXT_ERROR)) // TODO remove?
+            .block(Block::bordered().border_style(Style::default().fg(palette::CONSOLE_TEXT_BORDER))) // TODO remove?
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true }),
         area,
     );
 }
 
-// ============================================================================
+// =============================================================================
 // Layout areas
-// ============================================================================
+// =============================================================================
 struct LayoutAreas {
     level: Rect,
     message: Rect,
@@ -161,16 +161,16 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
     }
 }
 
-// ============================================================================
+// =============================================================================
 // Level and user messages
-// ============================================================================
+// =============================================================================
 fn draw_level(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let style = if let Stage::Gameplay(gameplay_handler) = stage
         && gameplay_handler.blinking_labels().has_level_blinked()
     {
-        Style::default().fg(Color::Black)
+        Style::default().fg(palette::UI_CANVAS_BG)
     } else {
-        Style::default().fg(Color::Indexed(208)).add_modifier(Modifier::BOLD | Modifier::ITALIC)
+        Style::default().fg(palette::STAT_LEVEL).add_modifier(Modifier::BOLD | Modifier::ITALIC)
     };
 
     let level = Paragraph::new(format!("LEVEL {}", game.scoring().level())).block(Block::default().padding(Padding::left(1)).style(style));
@@ -188,9 +188,9 @@ pub fn draw_message(frame: &mut Frame, area: Rect, game: &GameState) {
     frame.render_widget(message, area);
 }
 
-// ============================================================================
+// =============================================================================
 // Left side (next column and stats) and game board
-// ============================================================================
+// =============================================================================
 fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
 
@@ -211,14 +211,14 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Sta
 fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let (max_combo_label_color, highscore_label_color) = match stage {
         Stage::Gameplay(handler) => (
-            if handler.blinking_labels().has_max_combo_blinked() { Color::Black } else { Color::Magenta },
-            if handler.blinking_labels().has_highscore_blinked() { Color::Black } else { Color::Red }
+            if handler.blinking_labels().has_max_combo_blinked() { palette::UI_CANVAS_BG } else { palette::STAT_MAX_COMBO },
+            if handler.blinking_labels().has_highscore_blinked() { palette::UI_CANVAS_BG } else { palette::STAT_HIGHSCORE },
         ),
-        _ => (Color::Magenta, Color::Red)
+        _ => (palette::STAT_MAX_COMBO, palette::STAT_HIGHSCORE)
     };
 
     let stats = [
-        ("SCORE",       game.scoring().score(),                   Color::Green),
+        ("SCORE",       game.scoring().score(),                   palette::STAT_SCORE),
         ("MAX COMBO",   u32::from(game.scoring().max_combo()),    max_combo_label_color),
         ("HIGHSCORE",   game.scoring().highscore(),               highscore_label_color),
     ];
@@ -226,7 +226,7 @@ fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let lines = stats.into_iter().fold(Vec::with_capacity(stats.len() * 3), |mut lines, (label, value, color)| {
         lines.push(Line::default());
         lines.push(Line::from(label).style(Style::default().fg(color).bold()));
-        lines.push(Line::from(value.to_string()).style(Style::default().fg(Color::Indexed(152))));
+        lines.push(Line::from(value.to_string()).style(Style::default().fg(palette::STATS_VALUE)));
         lines
     });
 
@@ -269,42 +269,70 @@ fn draw_board(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     }
 }
 
-#[rustfmt::skip]
 fn draw_board_border(frame: &mut Frame, area: Rect) {
     let buf = frame.buffer_mut();
-    buf.set_style(area, Style::default().fg(Color::Indexed(245)));
 
     let left = area.left();
     let right = area.right() - 1;
     let top = area.top();
     let bottom = area.bottom() - 1;
-    for x in left..=right {
-        for y in top..=bottom {
-            if let Some(cell) = buf.cell_mut((x, y))
-                && (x == left || x == right || y == top || y == bottom)
-            {
-                let symbol = match (x == left, x == right, y == top, y == bottom) {
-                    (true, _, true, _)  => "▗", // LT corner
-                    (_, true, true, _)  => "▖", // RT corner
-                    (true, _, _, true)  => "▝", // LB corner
-                    (_, true, _, true)  => "▘", // RB corner
-                    (true, _, _, _)     => "🭵", // Left edge
-                    (_, true, _, _)     => "🭰", // Right edge
-                    (_, _, true, _)     => "▂", // Top edge
-                    (_, _, _, true)     => "▀", // Bottom edge
-                    _ => " ",
-                };
-                cell.set_symbol(symbol);
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        buf.set_style(area, Style::default().fg(palette::UI_GAME_BORDER));
+
+        // Draw thick top and bottom rows
+        for x in left..=right {
+            if let Some(cell) = buf.cell_mut((x, top)) {
+                cell.set_symbol("▄");
+            }
+            if let Some(cell) = buf.cell_mut((x, bottom)) {
+                cell.set_symbol("▀");
+            }
+        }
+
+        // Draw thin sides (skipping the corners we just drew)
+        for y in (top + 1)..bottom {
+            if let Some(cell) = buf.cell_mut((left, y)) {
+                cell.set_symbol("▐");
+            }
+            if let Some(cell) = buf.cell_mut((right, y)) {
+                cell.set_symbol("▌");
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    // Draw game borders using background fill to bypass macOS line-spacing gaps
+    {
+        let border_color = palette::UI_GAME_BORDER;
+
+        // Draw solid thick horizontal rows (including the corners)
+        for x in left..=right {
+            if let Some(cell) = buf.cell_mut((x, top)) {
+                cell.set_symbol(" ").set_bg(border_color);
+            }
+            if let Some(cell) = buf.cell_mut((x, bottom)) {
+                cell.set_symbol(" ").set_bg(border_color);
+            }
+        }
+
+        // Draw solid thick vertical sides
+        for y in (top + 1)..bottom {
+            for x in [left, right] {
+                if let Some(cell) = buf.cell_mut((x, y)) {
+                    cell.set_symbol(" ").set_bg(border_color);
+                }
             }
         }
     }
 }
 
-// ============================================================================
+// =============================================================================
 // Keys legend
-// ============================================================================
-const STYLE_KEYS: Style = Style::new().fg(Color::Indexed(150)).bold();
-const STYLE_ACTIONS: Style = Style::new().fg(Color::Gray);
+// =============================================================================
+const STYLE_KEYS: Style = Style::new().fg(palette::UI_LEGEND_KEY).bold();
+const STYLE_ACTIONS: Style = Style::new().fg(palette::UI_LEGEND_VALUE);
 
 struct LegendItem {
     key: &'static str,
@@ -329,10 +357,31 @@ fn compile_legend(legend: &[LegendItem]) -> (Text<'static>, Text<'static>) {
 }
 
 fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>)) {
-    let legend_block = Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::Indexed(245)));
-    frame.render_widget(&legend_block, area);
+    let border_style = Style::default().fg(palette::UI_LEGEND_BORDER);
 
-    let horizontal_layout = Layout::horizontal([Constraint::Length(1), Constraint::Length(13), Constraint::Min(0)]).split(legend_block.inner(area));
+    #[cfg(not(target_os = "macos"))]
+    {
+        let delimiting_line_block = Block::default().borders(Borders::TOP).border_style(border_style);
+        frame.render_widget(delimiting_line_block, area);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let buf = frame.buffer_mut();
+
+        let line_style = border_style.add_modifier(Modifier::UNDERLINED);
+
+        let line_y = area.top().saturating_sub(1);
+        for x in area.left()..area.right() {
+            if let Some(cell) = buf.cell_mut((x, line_y)) {
+                cell.set_symbol(" ").set_style(line_style);
+            }
+        }
+    }
+
+    let inner_area = Block::default().borders(Borders::TOP).inner(area);
+    let horizontal_layout = Layout::horizontal([Constraint::Length(1), Constraint::Length(13), Constraint::Min(0)]).split(inner_area);
+
     let keys_area = horizontal_layout[1];
     let actions_area = horizontal_layout[2];
 
@@ -341,9 +390,9 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>))
     frame.render_widget(Paragraph::new(actions), actions_area);
 }
 
-// ============================================================================
+// =============================================================================
 // Seed generators for randomizing Gem colors
-// ============================================================================
+// =============================================================================
 fn seed_for_randomizing_next_column_blocks(tick: u64, x: u8, y: i8) -> u64 {
     generate_seed(1, tick, u64::from(y.unsigned_abs()), u64::from(x))
 }

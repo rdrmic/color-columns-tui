@@ -30,8 +30,8 @@ impl log::Log for FileLogger {
     }
 }
 
-pub fn init_logger(app_state_dir_path: Option<&Path>) -> Result<Option<PathBuf>, std::io::Error> {
-    let Some(dir_path) = app_state_dir_path else {
+pub fn init_logger(app_data_dir_path: Option<&Path>) -> Result<Option<PathBuf>, std::io::Error> {
+    let Some(dir_path) = app_data_dir_path else {
         return Ok(None);
     };
 

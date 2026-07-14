@@ -1,15 +1,14 @@
 pub use block::{Gem, GemBlock};
 pub use column::{Column, FallingColumnPlaceholder};
-pub use num_matches_unpacking::unpack_matches_points;
 pub use pile::Pile;
 
 mod block;
 mod column;
 mod pile;
 
-// ============================================================================
+// =============================================================================
 // Searching for matches
-// ============================================================================
+// =============================================================================
 const MIN_CONSECUTIVE_GEMS_TO_MATCH: usize = 3;
 const MAX_MATCHES_PER_DIRECTION: usize = 5;
 

@@ -5,7 +5,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use crate::{
     errors::Context,
     game_state::GameState,
-    messages::Message,
+    messages::{Message, MessageColor},
     stage_handlers::{FAILED_TO_START_GAME_ERROR, FRAME_DURATION_IDLE, GameplayHandler, Stage, StageHandler},
 };
 
@@ -13,7 +13,7 @@ pub struct GameOverHandler;
 
 impl GameOverHandler {
     pub const fn new(game: &mut GameState) -> Self {
-        let message = Message::new_permanent("Game over!", [241, 76, 76]);
+        let message = Message::new_permanent("Game over!", MessageColor::GameOver);
         game.set_message(Some(message));
 
         Self

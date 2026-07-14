@@ -24,8 +24,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(app_state_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
-        let mut game = GameState::new(app_state_dir_path)?;
+    pub fn new(app_data_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
+        let mut game = GameState::new(app_data_dir_path)?;
         let stage = Stage::Ready(ReadyHandler::new(&mut game));
 
         Ok(Self { stage, game, is_running: true })

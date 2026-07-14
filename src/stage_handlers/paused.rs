@@ -4,10 +4,11 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game_state::GameState,
-    messages::Message,
+    messages::{Message, MessageColor},
     stage_handlers::{FRAME_DURATION_PAUSED, GameplayHandler, Stage, StageHandler},
 };
 
+#[derive(Copy, Clone)]
 pub struct PausedHandler {
     start_time: Instant,
 }
@@ -16,7 +17,7 @@ impl PausedHandler {
     const FLICKER_DURATION: u64 = FRAME_DURATION_PAUSED.as_millis() as u64;
 
     pub fn new(game: &mut GameState) -> Self {
-        let message = Message::new_permanent("Paused...", [170, 170, 170]);
+        let message = Message::new_permanent("Paused...", MessageColor::Paused);
         game.set_message(Some(message));
 
         Self { start_time: Instant::now() }
