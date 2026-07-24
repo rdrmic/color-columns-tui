@@ -29,21 +29,23 @@ pub(in crate::color_palettes) mod reusable_color_components {
     #[cfg(not(target_os = "macos"))]
     pub mod standard_components {
         // Gem colors
-        pub const RGB_RED:                  [u8; 3] = [239,  71, 111];
-        pub const RGB_CYAN_PASTEL:          [u8; 3] = [  6, 214, 160];
-        pub const RGB_BLUE:                 [u8; 3] = [ 17, 138, 194];
-        pub const RGB_YELLOW:               [u8; 3] = [255, 209, 102];
-        pub const RGB_PURPLE:               [u8; 3] = [131,  56, 236];
-        pub const RGB_ORANGE:               [u8; 3] = [247, 127,   0];
+        pub const RASPBERRY:        [u8; 3] = [230,  20, 100];
+        pub const MINT:             [u8; 3] = [  0, 215, 135];
+        pub const TEAL:             [u8; 3] = [  0, 135, 175];
+        pub const YELLOW:           [u8; 3] = [255, 215,  95];
+        pub const VIOLET:           [u8; 3] = [135,   0, 255];
+        pub const ORANGE:           [u8; 3] = [255, 100,   0];
         // Other colors
-        pub const RGB_BLUE_DARK:            [u8; 3] = [  6,  14,  18];
-        pub const RGB_GREEN:                [u8; 3] = [  0, 195,   0];
-        pub const RGB_GREEN_KHAKI:          [u8; 3] = [175, 215, 135];
-        pub const RGB_ORANGE_BRIGHT:        [u8; 3] = [255, 135,   0];
-        pub const RGB_CYAN_LIGHT:           [u8; 3] = [175, 215, 215];
-        pub const RGB_GRAY_DARK:            [u8; 3] = [ 88,  88,  88];
-        pub const RGB_GRAY_MEDIUM:          [u8; 3] = [138, 138, 138];
-        pub const RGB_GRAY_LIGHT:           [u8; 3] = [170, 170, 170];
+        pub const RED:              [u8; 3] = [230,  40,  50];
+        pub const RED_BRIGHT:       [u8; 3] = [250,  15,  25];
+        pub const GREEN:            [u8; 3] = [  0, 195,   0];
+        pub const BLUE:             [u8; 3] = [  0, 125, 200];
+        pub const BLUE_DARK:        [u8; 3] = [  6,  14,  18];
+        pub const GREEN_KHAKI:      [u8; 3] = [175, 215, 135];
+        pub const ORANGE_BRIGHT:    [u8; 3] = [255, 135,   0];
+        pub const CYAN_LIGHT:       [u8; 3] = [175, 215, 215];
+        pub const GRAY_MEDIUM:      [u8; 3] = [138, 138, 138];
+        pub const GRAY_LIGHT:       [u8; 3] = [170, 170, 170];
     }
     #[cfg(not(target_os = "macos"))]
     pub use standard_components::*;
@@ -51,21 +53,23 @@ pub(in crate::color_palettes) mod reusable_color_components {
     #[cfg(target_os = "macos")]
     pub mod macos_components {
         // Gem colors
-        pub const RGB_RED:                  u8 = 161;
-        pub const RGB_CYAN_PASTEL:          u8 =  43;
-        pub const RGB_BLUE:                 u8 =  31;
-        pub const RGB_YELLOW:               u8 = 221;
-        pub const RGB_PURPLE:               u8 =  93;
-        pub const RGB_ORANGE:               u8 = 202;
+        pub const RASPBERRY:        u8 = 161;
+        pub const MINT:             u8 =  42;
+        pub const TEAL:             u8 =  31;
+        pub const YELLOW:           u8 = 221;
+        pub const VIOLET:           u8 =  93;
+        pub const ORANGE:           u8 = 202;
         // Other colors
-        pub const RGB_BLUE_DARK:            u8 = 232;   // TODO RGB(8,8,8) - change
-        pub const RGB_GREEN:                u8 =  40;
-        pub const RGB_GREEN_KHAKI:          u8 = 150;
-        pub const RGB_ORANGE_BRIGHT:        u8 = 208;
-        pub const RGB_CYAN_LIGHT:           u8 = 152;
-        pub const RGB_GRAY_DARK:            u8 = 240;
-        pub const RGB_GRAY_MEDIUM:          u8 = 245;
-        pub const RGB_GRAY_LIGHT:           u8 = 248;
+        pub const RED:              u8 = 160;
+        pub const RED_BRIGHT:       u8 = 196;
+        pub const GREEN:            u8 =  40;
+        pub const BLUE:             u8 =  25;
+        pub const BLUE_DARK:        u8 = 233;
+        pub const GREEN_KHAKI:      u8 = 150;
+        pub const ORANGE_BRIGHT:    u8 = 208;
+        pub const CYAN_LIGHT:       u8 = 152;
+        pub const GRAY_MEDIUM:      u8 = 245;
+        pub const GRAY_LIGHT:       u8 = 248;
     }
     #[cfg(target_os = "macos")]
     pub use macos_components::*;
@@ -77,12 +81,12 @@ pub(in crate::color_palettes) mod reusable_color_components {
 #[cfg(not(target_os = "macos"))]
 #[rustfmt::skip]
 pub mod in_game_messages {
-    use super::reusable_color_components::{RGB_GREEN, RGB_ORANGE_BRIGHT, RGB_GRAY_LIGHT, RGB_RED};
+    use super::reusable_color_components::{GREEN, ORANGE_BRIGHT, GRAY_LIGHT, RED_BRIGHT};
 
-    pub const RGB_GET_READY:        [u8; 3] = RGB_GREEN;
-    pub const RGB_LEVEL_UP:         [u8; 3] = RGB_ORANGE_BRIGHT;
-    pub const RGB_PAUSED:           [u8; 3] = RGB_GRAY_LIGHT;
-    pub const RGB_GAME_OVER:        [u8; 3] = RGB_RED;  // TODO make it more red
+    pub const GET_READY_COLOR_SOURCE:   [u8; 3] = GREEN;
+    pub const LEVEL_UP_COLOR_SOURCE:    [u8; 3] = ORANGE_BRIGHT;
+    pub const PAUSED_COLOR_SOURCE:      [u8; 3] = GRAY_LIGHT;
+    pub const GAME_OVER_COLOR_SOURCE:   [u8; 3] = RED_BRIGHT;
 }
 
 #[cfg(target_os = "macos")]
@@ -92,13 +96,13 @@ pub mod in_game_messages {
 
     use super::{
         byte_to_color,
-        reusable_color_components::{RGB_GREEN, RGB_ORANGE_BRIGHT, RGB_GRAY_LIGHT, RGB_RED},
+        reusable_color_components::{GREEN, ORANGE_BRIGHT, GRAY_LIGHT, RED_BRIGHT},
     };
 
-    pub const RGB_GET_READY:        Color = byte_to_color(RGB_GREEN);
-    pub const RGB_LEVEL_UP:         Color = byte_to_color(RGB_ORANGE_BRIGHT);
-    pub const RGB_PAUSED:           Color = byte_to_color(RGB_GRAY_LIGHT);
-    pub const RGB_GAME_OVER:        Color = byte_to_color(RGB_RED);  // TODO make it more red
+    pub const GET_READY_COLOR_SOURCE:   Color = byte_to_color(GREEN);
+    pub const LEVEL_UP_COLOR_SOURCE:    Color = byte_to_color(ORANGE_BRIGHT);
+    pub const PAUSED_COLOR_SOURCE:      Color = byte_to_color(GRAY_LIGHT);
+    pub const GAME_OVER_COLOR_SOURCE:   Color = byte_to_color(RED_BRIGHT);
 }
 
 // =============================================================================
@@ -111,11 +115,11 @@ pub mod dev_console {
     mod standard {
         use ratatui::style::Color;
 
-        pub const DEV_CONSOLE_BORDER: Color =       Color::Rgb(0, 255, 0);
-        pub const DEV_CONSOLE_GRAY: Color =         Color::Rgb(210, 210, 215);
-        pub const DEV_CONSOLE_CYAN: Color =         Color::Rgb(0, 230, 230);
-        pub const DEV_CONSOLE_YELLOW: Color =       Color::Rgb(255, 215, 0);
-        pub const DEV_CONSOLE_RED: Color =          Color::Rgb(255, 75, 75);
+        pub const DEV_CONSOLE_BORDER: Color =   Color::Rgb(0, 255, 0);
+        pub const DEV_CONSOLE_GRAY: Color =     Color::Rgb(210, 210, 215);
+        pub const DEV_CONSOLE_CYAN: Color =     Color::Rgb(0, 230, 230);
+        pub const DEV_CONSOLE_YELLOW: Color =   Color::Rgb(200, 200, 0);
+        pub const DEV_CONSOLE_RED: Color =      Color::Rgb(245, 75, 75);
     }
     #[cfg(not(target_os = "macos"))]
     pub use standard::*;
@@ -124,11 +128,11 @@ pub mod dev_console {
     mod macos {
         use ratatui::style::Color;
 
-        pub const DEV_CONSOLE_BORDER: Color =       Color::Indexed(46);
-        pub const DEV_CONSOLE_GRAY: Color =         Color::Indexed(248);
-        pub const DEV_CONSOLE_CYAN: Color =         Color::Indexed(51);
-        pub const DEV_CONSOLE_YELLOW: Color =       Color::Indexed(226);
-        pub const DEV_CONSOLE_RED: Color =          Color::Indexed(196);
+        pub const DEV_CONSOLE_BORDER: Color =   Color::Indexed(46);
+        pub const DEV_CONSOLE_GRAY: Color =     Color::Indexed(249);
+        pub const DEV_CONSOLE_CYAN: Color =     Color::Indexed(44);
+        pub const DEV_CONSOLE_YELLOW: Color =   Color::Indexed(220);
+        pub const DEV_CONSOLE_RED: Color =      Color::Indexed(196);
     }
     #[cfg(target_os = "macos")]
     pub use macos::*;

@@ -5,7 +5,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use crate::{
     errors::Context,
     game_state::GameState,
-    messages::{Message, MessageColor},
+    messages::{Message, MessageType},
     stage_handlers::{FAILED_TO_START_GAME_ERROR, FRAME_DURATION_IDLE, GameplayHandler, InstructionsHandler, Stage, StageHandler},
 };
 
@@ -13,7 +13,7 @@ pub struct ReadyHandler;
 
 impl ReadyHandler {
     pub const fn new(game: &mut GameState) -> Self {
-        let message = Message::new_fading("Get ready!", MessageColor::GetReady, 1, 5);
+        let message = Message::new_fading(MessageType::GetReady, 1, 5);
         game.set_message(Some(message));
 
         Self

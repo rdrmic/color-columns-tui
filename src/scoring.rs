@@ -45,7 +45,9 @@ impl Scoring {
         let calculated_points = calculated_points_per_direction.into_iter().filter(|p| *p > 0).product::<u16>() * cascade_multiplier;
         self.accumulated_points += calculated_points;
 
-        self.count_in_accumulated_points();
+        self.add_accumulated_points();
+
+        self.update_highscore();
     }
 
     pub const fn is_level_increased(&mut self) -> bool {
@@ -61,6 +63,11 @@ impl Scoring {
     pub const fn level(&self) -> u16 {
         self.level
     }
+
+    // TODO
+    // pub const fn points(&self) -> u16 {
+    //     self.accumulated_points
+    // }
 
     pub const fn score(&self) -> u32 {
         self.score
@@ -88,13 +95,15 @@ impl Scoring {
         1 + self.cascade_count as u16
     }
 
-    fn count_in_accumulated_points(&mut self) {
+    fn add_accumulated_points(&mut self) {
         self.score += u32::from(self.accumulated_points);
 
         if self.accumulated_points > self.max_combo {
             self.max_combo = self.accumulated_points;
         }
+    }
 
+    const fn update_highscore(&mut self) {
         if self.score > self.highscore {
             self.highscore = self.score;
         }

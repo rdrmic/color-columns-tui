@@ -73,7 +73,7 @@ pub fn draw(frame: &mut Frame, area: Rect) {
 
         let block = Block::bordered()
             .title(format!(" Navigate history (last {MAX_CONSOLE_LOG_LINES} lines): <Page Up/Down> / <Home> (oldest line in buffer) / <End> (most recent line; resets auto-scroll) "))
-            .style(Style::default().fg(palette::DEV_CONSOLE_BORDER))
+            .style(Style::from(palette::DEV_CONSOLE_BORDER))
             .padding(Padding::horizontal(1));
 
         // Save this for the input handler to use later
@@ -129,7 +129,7 @@ static LOG_CHANNEL: LazyLock<(Sender<LogMessage>, Mutex<Receiver<LogMessage>>)> 
 });
 
 /// Sends message to the log channel (used by `dev_*!` macros in mod.rs).
-#[allow(unused)]
+#[allow(dead_code)]
 pub fn send_log_message(msg: Cow<'static, str>, color: PrintColor) {
     let (tx, _) = &*LOG_CHANNEL;
     let _ = tx.send(LogMessage { msg, color });

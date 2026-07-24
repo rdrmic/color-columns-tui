@@ -4,7 +4,8 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game_state::GameState,
-    stage_handlers::{FRAME_DURATION_GAMEPLAY, GameOverHandler, PausedHandler, Stage, StageHandler},
+    stage_handlers::{FRAME_DURATION, GameOverHandler, PausedHandler, Stage, StageHandler},
+    visual_effects::Blinking,
 };
 
 pub struct GameplayHandler {
@@ -56,13 +57,12 @@ impl StageHandler for GameplayHandler {
 
     fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
         let time_before_next_game_tick = game.current_tick_duration().checked_sub(self.gravity_time.elapsed()).unwrap_or(Duration::ZERO);
-        FRAME_DURATION_GAMEPLAY.min(time_before_next_game_tick)
+        FRAME_DURATION.min(time_before_next_game_tick)
     }
 
     fn update(&mut self, game: &mut GameState) -> Option<Stage> {
-        let tick_rate = game.current_tick_duration();
-
         // Use `while` instead of `if` to catch up if the process "hitched"
+        let tick_rate = game.current_tick_duration();
         while self.gravity_time.elapsed() >= tick_rate {
             if let Some(gameover_stage) = self.try_updating_tick(game, self.gravity_time + tick_rate) {
                 return Some(gameover_stage);
@@ -101,20 +101,20 @@ impl BlinkingLabels {
         }
     }
 
-    pub fn has_level_blinked(&self) -> bool {
-        self.level.blinked()
+    pub fn is_level_visible(&self) -> bool {
+        self.level.is_visible()
     }
 
-    pub fn has_max_combo_blinked(&self) -> bool {
-        self.max_combo.blinked()
+    pub fn is_max_combo_visible(&self) -> bool {
+        self.max_combo.is_visible()
     }
 
-    pub fn has_highscore_blinked(&self) -> bool {
+    pub fn is_highscore_visible(&self) -> bool {
         let Some(highscore) = &self.highscore else {
             return false;
         };
 
-        highscore.blinked()
+        highscore.is_visible()
     }
 
     fn update(&mut self, game: &GameState) {
@@ -128,52 +128,37 @@ impl BlinkingLabels {
     }
 
     fn get_label_values(game: &GameState) -> (u32, u32, u32) {
-        (u32::from(game.scoring().level()), u32::from(game.scoring().max_combo()), game.scoring().highscore())
+        let scoring = game.scoring();
+        (u32::from(scoring.level()), u32::from(scoring.max_combo()), scoring.highscore())
     }
 }
 
 struct BlinkingLabel {
     value: u32,
-    blink_time: Option<Instant>,
+    blinking: Option<Blinking>,
 }
 
 impl BlinkingLabel {
-    const BLINK_DURATION: u64 = 475;
-    const NUM_PHASES: u64 = 3;
-
     const fn new(initial_value: u32) -> Self {
-        Self { value: initial_value, blink_time: None }
+        Self { value: initial_value, blinking: None }
     }
 
-    fn blinked(&self) -> bool {
-        let Some(blink_time) = self.blink_time else {
-            return false;
+    fn is_visible(&self) -> bool {
+        let Some(blinking) = self.blinking.as_ref() else {
+            return true;
         };
 
-        let elapsed_ms = blink_time.elapsed().as_millis() as u64;
-        let blink_state = (elapsed_ms / Self::BLINK_DURATION) % 2;
-        blink_state == 0 // black phase
+        blinking.is_visible_phase()
     }
 
     fn update(&mut self, current_value: u32) {
         if current_value > self.value {
             self.value = current_value;
-            self.start_blink_time();
+            self.blinking = Some(Blinking::new());
         }
 
-        if let Some(blink_time) = self.blink_time {
-            let elapsed_ms = blink_time.elapsed().as_millis() as u64;
-            if elapsed_ms >= Self::BLINK_DURATION * Self::NUM_PHASES {
-                self.finish_blink_time();
-            }
+        if let Some(blinking) = self.blinking.as_mut() {
+            blinking.update();
         }
-    }
-
-    fn start_blink_time(&mut self) {
-        self.blink_time = Some(Instant::now());
-    }
-
-    const fn finish_blink_time(&mut self) {
-        self.blink_time = None;
     }
 }

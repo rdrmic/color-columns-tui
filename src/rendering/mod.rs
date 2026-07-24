@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, HorizontalAlignment, Layout, Rect},
+    layout::{Alignment, HorizontalAlignment, Rect},
     style::{Modifier, Style},
     text::{Line, Text},
     widgets::{Block, Borders, Padding, Paragraph, Wrap},
@@ -15,20 +15,39 @@ use crate::{
     stage_handlers::Stage,
 };
 
-mod gameover_ui;
-mod gameplay_ui;
-mod instructions_ui;
-mod paused_ui;
-mod ready_ui;
+mod gameover;
+mod gameplay;
+mod instructions;
+mod paused;
+mod ready;
 
 #[cfg(feature = "dev-console")]
-pub const MIN_WINDOW_WIDTH: u16 = 140;
+pub const MIN_WINDOW_WIDTH: u16 = 176;
 #[cfg(not(feature = "dev-console"))]
 pub const MIN_WINDOW_WIDTH: u16 = 29;
 pub const MIN_WINDOW_HEIGHT: u16 = 27;
 
 // =============================================================================
-// Entry point for rendering
+// Static styles
+// =============================================================================
+#[rustfmt::skip]
+mod styles {
+    use super::palette;
+    use ratatui::style::Style;
+
+    pub(super) const BG_AND_FG_COLORS: Style = Style::new().fg(palette::UI_CANVAS_FG).bg(palette::UI_CANVAS_BG);
+    pub(super) const FG_AS_BG_COLOR: Style   = Style::new().fg(palette::UI_CANVAS_BG);
+    #[cfg(not(target_os = "macos"))]
+    pub(super) const GAME_BORDER: Style      = Style::new().fg(palette::UI_GAME_BORDER);
+    pub(super) const LEGEND_BORDER: Style    = Style::new().fg(palette::UI_LEGEND_BORDER);
+    pub(super) const LEGEND_KEYS: Style      = Style::new().fg(palette::UI_LEGEND_KEY).bold();
+    pub(super) const LEGEND_ACTIONS: Style   = Style::new().fg(palette::UI_LEGEND_VALUE);
+    pub(super) const LEVEL: Style            = Style::new().fg(palette::STAT_LEVEL).bold().italic();
+    pub(super) const STATS_VALUES: Style     = Style::new().fg(palette::STATS_VALUE);
+}
+
+// =============================================================================
+// Rendering entry point
 // =============================================================================
 pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
     let frame_area = frame.area();
@@ -43,7 +62,7 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
     let layout_areas = get_layout_areas(frame_area);
 
     if matches!(stage, Stage::Instructions(_)) {
-        instructions_ui::draw_instructions(frame, layout_areas.instructions);
+        instructions::draw_instructions(frame, layout_areas.instructions);
     } else {
         draw_shared_areas(frame, &layout_areas, game, stage);
     }
@@ -54,7 +73,7 @@ pub fn render(frame: &mut Frame, stage: &Stage, game: &GameState) {
 }
 
 fn set_bg_and_fg_colors(frame: &mut Frame, frame_area: Rect) {
-    frame.buffer_mut().set_style(frame_area, Style::default().bg(palette::UI_CANVAS_BG).fg(palette::UI_CANVAS_FG));
+    frame.buffer_mut().set_style(frame_area, styles::BG_AND_FG_COLORS);
 }
 
 fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &GameState, stage: &Stage) {
@@ -67,11 +86,11 @@ fn draw_shared_areas(frame: &mut Frame, layout_areas: &LayoutAreas, game: &GameS
 
 fn draw_footer(frame: &mut Frame, area: Rect, stage: &Stage) {
     match stage {
-        Stage::Ready(_) => ready_ui::draw_footer(frame, area),
-        Stage::Gameplay(_) => gameplay_ui::draw_footer(frame, area),
-        Stage::Paused(_) => paused_ui::draw_footer(frame, area),
-        Stage::Instructions(_) => instructions_ui::draw_footer(frame, area),
-        Stage::GameOver(_) => gameover_ui::draw_footer(frame, area),
+        Stage::Ready(_) => ready::draw_footer(frame, area),
+        Stage::Gameplay(_) => gameplay::draw_footer(frame, area),
+        Stage::Paused(_) => paused::draw_footer(frame, area),
+        Stage::Instructions(_) => instructions::draw_footer(frame, area),
+        Stage::GameOver(_) => gameover::draw_footer(frame, area),
     }
 }
 
@@ -82,23 +101,18 @@ const fn is_terminal_window_too_small(area: Rect) -> bool {
     area.width < MIN_WINDOW_WIDTH || area.height < MIN_WINDOW_HEIGHT
 }
 
-fn render_message_terminal_window_too_small(frame: &mut Frame, area: Rect) {
+fn render_message_terminal_window_too_small(frame: &mut Frame, mut area: Rect) {
+    area.y += 1;
+
     let msg = vec![
         Line::styled("Terminal window too small!", palette::CONSOLE_TEXT_ERROR),
-        Line::from(""),
+        Line::default(),
         Line::styled(format!("Required: {MIN_WINDOW_WIDTH}x{MIN_WINDOW_HEIGHT}"), palette::CONSOLE_TEXT_INFO),
         Line::styled(format!("Current:  {}x{}", area.width, area.height), palette::CONSOLE_TEXT_ERROR),
-        Line::from(""),
+        Line::default(),
         Line::styled("Please resize the window to play.", palette::CONSOLE_TEXT_INFO),
     ];
-    frame.render_widget(
-        Paragraph::new(msg)
-            .style(Style::default().fg(palette::CONSOLE_TEXT_ERROR)) // TODO remove?
-            .block(Block::bordered().border_style(Style::default().fg(palette::CONSOLE_TEXT_BORDER))) // TODO remove?
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: true }),
-        area,
-    );
+    frame.render_widget(Paragraph::new(msg).alignment(Alignment::Center).wrap(Wrap { trim: true }), area);
 }
 
 // =============================================================================
@@ -110,54 +124,30 @@ struct LayoutAreas {
     next_column: Rect,
     stats: Rect,
     board: Rect,
-    instructions: Rect,
     key_legend: Rect,
+    instructions: Rect,
     #[cfg(feature = "dev-console")]
     dev_console: Rect,
 }
 
-fn get_layout_areas(area: Rect) -> LayoutAreas {
-    #[cfg(feature = "dev-console")]
-    let horizontal_constraints = [Constraint::Length(29), Constraint::Length(13), Constraint::Min(0)];
-    #[cfg(not(feature = "dev-console"))]
-    let horizontal_constraints = [Constraint::Length(29)];
-
-    let main_horizontal_layout = Layout::default().direction(Direction::Horizontal).constraints(horizontal_constraints).split(area);
-    let entire_area = main_horizontal_layout[0];
-
-    let main_vertical_layout =
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(18), Constraint::Min(0)]).margin(1).spacing(1).split(entire_area);
-    let entire_game_area = main_vertical_layout[0];
-    let key_legend_area = main_vertical_layout[1];
-
-    let game_vertical_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(2), Constraint::Min(0)])
-        .split(entire_game_area);
-    let level_area = game_vertical_layout[0];
-    let message_area = game_vertical_layout[1];
-    let game_area = game_vertical_layout[2];
-
-    let game_horizontal_layout = Layout::default().direction(Direction::Horizontal).constraints([Constraint::Length(13), Constraint::Min(0)]).split(game_area);
-
-    let left_side_area = game_horizontal_layout[0];
-    let board_area = game_horizontal_layout[1];
-
-    let left_side_vertical_layout =
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(1), Constraint::Length(3), Constraint::Min(0)]).split(left_side_area);
-    let next_column_area = left_side_vertical_layout[1];
-    let stats_area = left_side_vertical_layout[2];
+#[rustfmt::skip]
+const fn get_layout_areas(frame_area: Rect) -> LayoutAreas {
+    let entire_area =        Rect { x: frame_area.x,         y: frame_area.y,           width: 29,                       height: frame_area.height };
+    let entire_area_padded = Rect { x: entire_area.x + 1,    y: entire_area.y + 1,      width: entire_area.width - 2,    height: entire_area.height - 2 };
+    let entire_game_area =   Rect { x: entire_area_padded.x, y: entire_area_padded.y,   width: entire_area_padded.width, height: 18 };
+    let game_area =          Rect { x: entire_game_area.x,   y: entire_game_area.y + 3, width: entire_game_area.width,   height: entire_game_area.height - 3 };
+    let left_side_area =     Rect { x: game_area.x,          y: game_area.y,            width: 11,                       height: game_area.height };
 
     LayoutAreas {
-        level: level_area,
-        message: message_area,
-        next_column: next_column_area,
-        stats: stats_area,
-        board: board_area,
+        level:        Rect { x: entire_game_area.x + 1,   y: entire_game_area.y,        width: entire_game_area.width,   height: 1 },
+        message:      Rect { x: entire_game_area.x - 1,   y: entire_game_area.y + 1,    width: entire_game_area.width,   height: 2 },
+        next_column:  Rect { x: left_side_area.x,         y: left_side_area.y + 1,      width: left_side_area.width,     height: 3 },
+        stats:        Rect { x: left_side_area.x,         y: left_side_area.y + 4,      width: left_side_area.width,     height: left_side_area.height - 4 },
+        board:        Rect { x: game_area.x + 13,         y: game_area.y,               width: game_area.width - 13,     height: game_area.height },
+        key_legend:   Rect { x: entire_area_padded.x,     y: entire_area_padded.y + 19, width: entire_area_padded.width, height: entire_area_padded.height - 19 },
         instructions: entire_area,
-        key_legend: key_legend_area,
         #[cfg(feature = "dev-console")]
-        dev_console: main_horizontal_layout[2],
+        dev_console:  Rect { x: entire_area.right() + 13, y: frame_area.y,              width: frame_area.width - 42,    height: frame_area.height }
     }
 }
 
@@ -165,15 +155,16 @@ fn get_layout_areas(area: Rect) -> LayoutAreas {
 // Level and user messages
 // =============================================================================
 fn draw_level(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
-    let style = if let Stage::Gameplay(gameplay_handler) = stage
-        && gameplay_handler.blinking_labels().has_level_blinked()
-    {
-        Style::default().fg(palette::UI_CANVAS_BG)
-    } else {
-        Style::default().fg(palette::STAT_LEVEL).add_modifier(Modifier::BOLD | Modifier::ITALIC)
+    if let Stage::Instructions(_) = stage {
+        return;
+    }
+
+    let style = match stage {
+        Stage::Gameplay(gameplay_handler) if !gameplay_handler.blinking_labels().is_level_visible() => styles::FG_AS_BG_COLOR,
+        _ => styles::LEVEL,
     };
 
-    let level = Paragraph::new(format!("LEVEL {}", game.scoring().level())).block(Block::default().padding(Padding::left(1)).style(style));
+    let level = Paragraph::new(format!("LEVEL {}", game.scoring().level())).style(style);
     frame.render_widget(level, area);
 }
 
@@ -181,10 +172,15 @@ pub fn draw_message(frame: &mut Frame, area: Rect, game: &GameState) {
     let Some(msg) = game.message() else {
         return;
     };
+    if let Some(blinking) = msg.blinking()
+        && !blinking.is_visible_phase()
+    {
+        return;
+    }
 
-    let message = Paragraph::new(msg.text())
-        .alignment(HorizontalAlignment::Right)
-        .block(Block::default().padding(Padding::horizontal(1)).style(Style::default().fg(msg.color()).add_modifier(Modifier::BOLD | Modifier::ITALIC)));
+    //let area = area.offset(Offset::new(-1, 0));
+
+    let message = Paragraph::new(msg.text()).style(Style::from((msg.color(), Modifier::BOLD | Modifier::ITALIC))).alignment(HorizontalAlignment::Right);
     frame.render_widget(message, area);
 }
 
@@ -192,7 +188,11 @@ pub fn draw_message(frame: &mut Frame, area: Rect, game: &GameState) {
 // Left side (next column and stats) and game board
 // =============================================================================
 fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
-    let right_aligned_area = Layout::horizontal([Constraint::Min(0), Constraint::Length(2), Constraint::Length(1)]).split(area)[1];
+    let right_aligned_area = Rect { x: area.right().saturating_sub(2), y: area.y, width: 2, height: area.height };
+
+    // FIXME remove
+    //let background = Block::new().style(Style::new().bg(ratatui::style::Color::Blue));
+    //frame.render_widget(background, area);
 
     if let Stage::Paused(pause_handler) = stage {
         // Next column with random colors
@@ -211,8 +211,8 @@ fn draw_next_column(frame: &mut Frame, area: Rect, game: &GameState, stage: &Sta
 fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
     let (max_combo_label_color, highscore_label_color) = match stage {
         Stage::Gameplay(handler) => (
-            if handler.blinking_labels().has_max_combo_blinked() { palette::UI_CANVAS_BG } else { palette::STAT_MAX_COMBO },
-            if handler.blinking_labels().has_highscore_blinked() { palette::UI_CANVAS_BG } else { palette::STAT_HIGHSCORE },
+            if handler.blinking_labels().is_max_combo_visible() { palette::STAT_MAX_COMBO } else { palette::UI_CANVAS_BG },
+            if handler.blinking_labels().is_highscore_visible() { palette::STAT_HIGHSCORE } else { palette::UI_CANVAS_BG },
         ),
         _ => (palette::STAT_MAX_COMBO, palette::STAT_HIGHSCORE)
     };
@@ -225,12 +225,13 @@ fn draw_stats(frame: &mut Frame, area: Rect, game: &GameState, stage: &Stage) {
 
     let lines = stats.into_iter().fold(Vec::with_capacity(stats.len() * 3), |mut lines, (label, value, color)| {
         lines.push(Line::default());
-        lines.push(Line::from(label).style(Style::default().fg(color).bold()));
-        lines.push(Line::from(value.to_string()).style(Style::default().fg(palette::STATS_VALUE)));
+        lines.push(Line::styled(label, Style::from((color, Modifier::BOLD))));
+        lines.push(Line::styled(value.to_string(), styles::STATS_VALUES));
         lines
     });
 
-    let stats = Paragraph::new(lines).block(Block::default().padding(ratatui::widgets::Padding::new(1, 1, 1, 0)));
+    let stats = Paragraph::new(lines).block(Block::default().padding(Padding::new(1, 1, 1, 0)));
+        //.style(Style::new().bg(ratatui::style::Color::DarkGray)); // FIXME remove
     frame.render_widget(stats, area);
 }
 
@@ -279,7 +280,7 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 
     #[cfg(not(target_os = "macos"))]
     {
-        buf.set_style(area, Style::default().fg(palette::UI_GAME_BORDER));
+        buf.set_style(area, styles::GAME_BORDER);
 
         // Draw thick top and bottom rows
         for x in left..=right {
@@ -331,9 +332,6 @@ fn draw_board_border(frame: &mut Frame, area: Rect) {
 // =============================================================================
 // Keys legend
 // =============================================================================
-const STYLE_KEYS: Style = Style::new().fg(palette::UI_LEGEND_KEY).bold();
-const STYLE_ACTIONS: Style = Style::new().fg(palette::UI_LEGEND_VALUE);
-
 struct LegendItem {
     key: &'static str,
     action: &'static str,
@@ -343,13 +341,13 @@ struct LegendItem {
 fn compile_legend(legend: &[LegendItem]) -> (Text<'static>, Text<'static>) {
     let keys = Text::from(
         legend.iter()
-            .map(|item| Line::from(item.key).style(STYLE_KEYS))
+            .map(|item| Line::styled(item.key, styles::LEGEND_KEYS))
             .collect::<Vec<_>>()
     ).alignment(Alignment::Left);
 
     let actions = Text::from(
         legend.iter()
-            .map(|item| Line::from(item.action).style(STYLE_ACTIONS))
+            .map(|item| Line::styled(item.action, styles::LEGEND_ACTIONS))
             .collect::<Vec<_>>()
     ).alignment(Alignment::Left);
 
@@ -357,11 +355,9 @@ fn compile_legend(legend: &[LegendItem]) -> (Text<'static>, Text<'static>) {
 }
 
 fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>)) {
-    let border_style = Style::default().fg(palette::UI_LEGEND_BORDER);
-
     #[cfg(not(target_os = "macos"))]
     {
-        let delimiting_line_block = Block::default().borders(Borders::TOP).border_style(border_style);
+        let delimiting_line_block = Block::default().borders(Borders::TOP).border_style(styles::LEGEND_BORDER);
         frame.render_widget(delimiting_line_block, area);
     }
 
@@ -369,7 +365,7 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>))
     {
         let buf = frame.buffer_mut();
 
-        let line_style = border_style.add_modifier(Modifier::UNDERLINED);
+        let line_style = styles::LEGEND_BORDER.add_modifier(Modifier::UNDERLINED);
 
         let line_y = area.top().saturating_sub(1);
         for x in area.left()..area.right() {
@@ -380,10 +376,10 @@ fn draw_keys_legend(frame: &mut Frame, area: Rect, legend: (Text<'_>, Text<'_>))
     }
 
     let inner_area = Block::default().borders(Borders::TOP).inner(area);
-    let horizontal_layout = Layout::horizontal([Constraint::Length(1), Constraint::Length(13), Constraint::Min(0)]).split(inner_area);
 
-    let keys_area = horizontal_layout[1];
-    let actions_area = horizontal_layout[2];
+    let keys_area = Rect { x: inner_area.x + 1, y: inner_area.y, width: 13, height: inner_area.height };
+
+    let actions_area = Rect { x: inner_area.x + 14, y: inner_area.y, width: inner_area.width.saturating_sub(14), height: inner_area.height };
 
     let (keys, actions) = legend;
     frame.render_widget(Paragraph::new(keys), keys_area);

@@ -6,9 +6,9 @@ use std::{
 use crate::{
     blocks::{Column, FallingColumnPlaceholder, MatchingStructure, Pile},
     errors::{self, Context},
-    messages::{Message, MessageColor},
+    messages::{Message, MessageType},
     scoring::Scoring,
-    stage_handlers::FRAME_DURATION_GAMEPLAY,
+    stage_handlers::FRAME_DURATION,
 };
 
 #[derive(Copy, Clone)]
@@ -115,7 +115,7 @@ impl GameState {
     pub const fn current_tick_duration(&self) -> Duration {
         match self.gameplay_state {
             GameplayState::FallingColumn => self.current_tick_duration,
-            _ => FRAME_DURATION_GAMEPLAY,
+            _ => FRAME_DURATION,
         }
     }
 
@@ -222,7 +222,7 @@ impl GameState {
 
         self.scoring.add(bit_packed_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading("Level up!", MessageColor::LevelUp, 28, 5);
+            let message = Message::new_fading(MessageType::LevelUp, 28, 5);
             self.set_message(Some(message));
 
             self.accelerate();

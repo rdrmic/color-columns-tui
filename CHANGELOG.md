@@ -1,14 +1,29 @@
-## 1.1.12 / 2026-07-14
+## 0.1.13 / 2026-07-24
+
+- Improve colors in macOS's and other terminals
+- Adjust minimal terminals dimensions on resizing
+- Move next column from game board
+- Introduce `visual_effects.rs`
+- Make "Game over!" message blink
+- Binary size optimizations: (-34,656 B)
+  - Consolidate and optimize creating `Style`s
+  - Layout calculations using `Rect` arithmetic
+
+```bash
+421 KiB (430,592 B)
+```
+
+## 0.1.12 / 2026-07-14
 
 - Add support for macOS and Windows terminals
 - Fix game board rendering in Widows "legacy" and macOS terminals
 - Introduce and apply color palettes for macOS + other OSs
 - Add recognition of terminals' Emoji support
-- Render Instruction screen depending of terminal Emoji support
+- Render Instructions screen depending of terminal Emoji support
 - Make creating / fetching data directory optional
 - Add terminal message if there are issues with the data directory
 - Bump Ratatui version: 0.30.1 -> 0.30.2
-- Split `main.rs` into `data_dir.rs` and `terminal.rs`
+- Extract `data_dir.rs` and `terminal.rs` from `main.rs`
 - Add `LICENSE.md`
 
 ```bash

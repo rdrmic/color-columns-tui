@@ -12,6 +12,7 @@ mod rendering;
 mod scoring;
 mod stage_handlers;
 mod terminal;
+mod visual_effects;
 
 use color_palettes as palette;
 
