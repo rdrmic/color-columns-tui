@@ -34,23 +34,46 @@ fn create_target_os_data_dir_path() -> Result<PathBuf, errors::Error> {
 
 #[cfg(target_os = "macos")]
 fn create_target_os_data_dir_path() -> Result<PathBuf, errors::Error> {
-    let mut dir_path = get_root_path("HOME")?;
+    let mut dir_path = get_root_path(c"HOME")?;
     dir_path.push("Library/Application Support");
     Ok(dir_path)
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn create_target_os_data_dir_path() -> Result<PathBuf, errors::Error> {
-    get_root_path("XDG_STATE_HOME").or_else(|_| {
-        let mut dir_path = get_root_path("HOME")?;
+    get_root_path(c"XDG_STATE_HOME").or_else(|_| {
+        let mut dir_path = get_root_path(c"HOME")?;
         dir_path.push(".local/state");
         Ok(dir_path)
     })
 }
 
-#[allow(clippy::inline_always)]
-#[inline(always)]
+#[cfg(target_os = "windows")]
 fn get_root_path(env_var: &str) -> Result<PathBuf, errors::Error> {
-    let path = std::env::var_os(env_var).map(PathBuf::from).ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
-    Ok(path)
+    match std::env::var_os(env_var) {
+        Some(path) => Ok(PathBuf::from(path)),
+        None => Err(std::io::Error::from(std::io::ErrorKind::NotFound).into()),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+#[allow(unsafe_code)]
+fn get_root_path(env_var: &'static std::ffi::CStr) -> Result<PathBuf, errors::Error> {
+    use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
+
+    unsafe extern "C" {
+        fn getenv(name: *const std::ffi::c_char) -> *mut std::ffi::c_char;
+    }
+
+    // SAFETY: `env_var` is NUL-terminated. The returned pointer is checked for
+    // null and copied into an owned `PathBuf` before this function returns.
+    let value = unsafe { getenv(env_var.as_ptr()) };
+    if value.is_null() {
+        return Err(std::io::Error::from(std::io::ErrorKind::NotFound).into());
+    }
+
+    // SAFETY: A non-null value returned by `getenv` points to a NUL-terminated
+    // C string, provided the process environment is not concurrently mutated.
+    let bytes = unsafe { std::ffi::CStr::from_ptr(value) }.to_bytes();
+    Ok(PathBuf::from(OsStr::from_bytes(bytes)))
 }

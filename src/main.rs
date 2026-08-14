@@ -19,11 +19,13 @@ use color_palettes as palette;
 fn main() {
     let app_data_dir_path = data_dir::get_app_data_dir_path();
 
-    let log_file_path = logging::file_logger::init_logger(app_data_dir_path.as_deref())
-        .context("Failed to setup application logging")
-        .map_err(|e| eprintln!("Warning: {e}"))
-        .ok()
-        .flatten();
+    let log_file_path = match logging::file_logger::init_logger(app_data_dir_path.as_deref()) {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("Warning: Failed to setup application logging: {e}");
+            None
+        }
+    };
 
     let original_hook = std::panic::take_hook();
     let is_logging_initialized = log_file_path.is_some();
@@ -35,7 +37,7 @@ fn main() {
         original_hook(panic_info);
     }));
 
-    if let Err(e) = run_app(app_data_dir_path.as_deref()) {
+    if let Err(e) = run_app(app_data_dir_path) {
         eprintln!("Error: {e}");
         if let Some(log_file_path) = log_file_path {
             eprintln!("Check '{}' for full details.", log_file_path.display());
@@ -45,17 +47,21 @@ fn main() {
     std::process::exit(0);
 }
 
-fn run_app(app_data_dir_path: Option<&std::path::Path>) -> Result<(), errors::Error> {
+fn run_app(app_data_dir_path: Option<std::path::PathBuf>) -> Result<(), errors::Error> {
     terminal::check_size()?;
 
     terminal::set_title();
     let terminal = terminal::init();
 
-    let exit_result = app::App::new(app_data_dir_path)
-        .context("Failed to initialize the app")
-        .and_then(|app| app.run(terminal))
-        .inspect(|()| log::info!("App exited normally"))
-        .inspect_err(|e| log::error!("Fatal error: {e}"));
+    let exit_result = match app::App::new(app_data_dir_path).context("Failed to initialize the app") {
+        Ok(app) => app.run(terminal),
+        Err(e) => Err(e),
+    };
+
+    match &exit_result {
+        Ok(()) => log::info!("App exited normally"),
+        Err(e) => log::error!("Fatal error: {e}"),
+    }
 
     terminal::restore();
     exit_result

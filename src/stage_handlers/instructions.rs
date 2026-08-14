@@ -1,27 +1,17 @@
-use std::time::Duration;
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game_state::GameState,
-    stage_handlers::{FRAME_DURATION_IDLE, ReadyHandler, Stage, StageHandler},
+    stage_handlers::{ReadyHandler, Stage, StageHandler, StageTransition},
 };
 
 pub struct InstructionsHandler;
 
 impl StageHandler for InstructionsHandler {
-    fn handle_key_pressed_event(&mut self, _game: &mut GameState, key_event: KeyEvent) -> Option<Stage> {
+    fn handle_key_pressed_event(&mut self, _game: &mut GameState, key_event: KeyEvent) -> StageTransition {
         if key_event.code == KeyCode::Enter {
-            return Some(Stage::Ready(ReadyHandler));
+            return Ok(Some(Stage::Ready(ReadyHandler)));
         }
-        None
-    }
-
-    fn time_before_next_tick(&mut self, _game: &mut GameState) -> Duration {
-        FRAME_DURATION_IDLE
-    }
-
-    fn update(&mut self, _game: &mut GameState) -> Option<Stage> {
-        None
+        Ok(None)
     }
 }

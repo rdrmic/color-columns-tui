@@ -30,10 +30,6 @@ impl Column {
         ]
     }
 
-    pub const fn next_y_positions(self) -> [i8; 3] {
-        [self.y + 1, self.y + 2, self.y + 3]
-    }
-
     pub const fn y_bottom(self) -> i8 {
         self.y + 2
     }

@@ -1,27 +1,35 @@
-use std::borrow::Cow;
-
 pub enum Error {
     Io(std::io::Error),
-    SystemTime(std::time::SystemTimeError),
-    ParseInt(std::num::ParseIntError),
-    Context(Cow<'static, str>, Box<Self>),
+    ClockBeforeUnixEpoch,
+    ParseIntEmpty,
+    ParseIntInvalidDigit,
+    ParseIntPosOverflow,
+    Context(Box<(&'static str, Self)>),
 }
 
 impl std::error::Error for Error {}
 
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self}")
+        std::fmt::Display::fmt(self, f)
     }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Io(e) => write!(f, "{e}"),
-            Self::SystemTime(e) => write!(f, "{e}"),
-            Self::ParseInt(e) => write!(f, "{e}"),
-            Self::Context(msg, e) => write!(f, "{msg}: {e}"),
+            Self::Io(e) => std::fmt::Display::fmt(e, f),
+            Self::ClockBeforeUnixEpoch => {
+                f.write_str("Failed to generate random seed from system time: system clock is set before year 1970: second time provided was later than self")
+            }
+            Self::ParseIntEmpty => f.write_str("cannot parse integer from empty string"),
+            Self::ParseIntInvalidDigit => f.write_str("invalid digit found in string"),
+            Self::ParseIntPosOverflow => f.write_str("number too large to fit in target type"),
+            Self::Context(context) => {
+                f.write_str(context.0)?;
+                f.write_str(": ")?;
+                std::fmt::Display::fmt(&context.1, f)
+            }
         }
     }
 }
@@ -32,41 +40,53 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<std::time::SystemTimeError> for Error {
-    fn from(e: std::time::SystemTimeError) -> Self {
-        Self::SystemTime(e)
-    }
-}
-
-impl From<std::num::ParseIntError> for Error {
-    fn from(e: std::num::ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
 // =============================================================================
 // Context Trait
 // =============================================================================
-#[allow(unused)]
 pub trait Context<T> {
-    fn context(self, msg: impl Into<Cow<'static, str>>) -> Result<T, Error>;
+    fn context(self, msg: &'static str) -> Result<T, Error>;
 
-    fn with_context<M, F>(self, f: F) -> Result<T, Error>
-    where
-        M: Into<Cow<'static, str>>,
-        F: FnOnce() -> M;
+    // fn with_context<M, F>(self, f: F) -> Result<T, Error>
+    // where
+    //     M: Into<Cow<'static, str>>,
+    //     F: FnOnce() -> M;
 }
 
 impl<T, E: Into<Error>> Context<T> for Result<T, E> {
-    fn context(self, msg: impl Into<Cow<'static, str>>) -> Result<T, Error> {
-        self.map_err(|e| Error::Context(msg.into(), Box::new(e.into())))
+    fn context(self, msg: &'static str) -> Result<T, Error> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(error) => Err(contextual_error(msg, error.into())),
+        }
     }
 
-    fn with_context<M, F>(self, f: F) -> Result<T, Error>
-    where
-        M: Into<Cow<'static, str>>,
-        F: FnOnce() -> M,
-    {
-        self.map_err(|e| Error::Context(f().into(), Box::new(e.into())))
+    // fn with_context<M, F>(self, f: F) -> Result<T, Error>
+    // where
+    //     M: Into<Cow<'static, str>>,
+    //     F: FnOnce() -> M,
+    // {
+    //     self.map_err(|e| Error::Context(f().into(), Box::new(e.into())))
+    // }
+}
+
+#[cold]
+#[inline(never)]
+fn contextual_error(message: &'static str, source: Error) -> Error {
+    Error::Context(Box::new((message, source)))
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+#[cfg(test)]
+mod tests {
+    use super::Error;
+
+    #[test]
+    fn clock_error_preserves_the_previous_full_diagnostic() {
+        assert_eq!(
+            Error::ClockBeforeUnixEpoch.to_string(),
+            "Failed to generate random seed from system time: system clock is set before year 1970: second time provided was later than self"
+        );
     }
 }

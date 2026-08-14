@@ -3,14 +3,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{blocks::num_matches_unpacking, errors};
+use crate::errors;
 
 pub struct Scoring {
-    level: u16,
+    level: u32,
     score: u32,
-    max_combo: u16,
+    max_combo: u32,
     highscore: u32,
-    accumulated_points: u16,
+    accumulated_points: u32,
     cascade_count: u8,
 }
 
@@ -31,19 +31,9 @@ impl Scoring {
         )
     }
 
-    pub fn add(&mut self, bit_packed_points: u64) {
-        let all_matches_points = num_matches_unpacking::unpack_matches_points(bit_packed_points);
-
-        let mut calculated_points_per_direction = [0; 4];
-        for direction_points in all_matches_points.into_iter().enumerate() {
-            let points = direction_points.1.into_iter().filter(|p| *p > 0).map(u16::from).product::<u16>();
-            calculated_points_per_direction[direction_points.0] = if points == 1 { 0 } else { points };
-        }
-
-        let cascade_multiplier = self.calculate_cascade_multiplier();
-
-        let calculated_points = calculated_points_per_direction.into_iter().filter(|p| *p > 0).product::<u16>() * cascade_multiplier;
-        self.accumulated_points += calculated_points;
+    pub const fn add(&mut self, match_points: u32) {
+        let calculated_points = match_points.saturating_mul(self.calculate_cascade_multiplier());
+        self.accumulated_points = self.accumulated_points.saturating_add(calculated_points);
 
         self.add_accumulated_points();
 
@@ -60,12 +50,12 @@ impl Scoring {
         }
     }
 
-    pub const fn level(&self) -> u16 {
+    pub const fn level(&self) -> u32 {
         self.level
     }
 
     // TODO
-    // pub const fn points(&self) -> u16 {
+    // pub const fn accumulated_points(&self) -> u32 {
     //     self.accumulated_points
     // }
 
@@ -73,7 +63,7 @@ impl Scoring {
         self.score
     }
 
-    pub const fn max_combo(&self) -> u16 {
+    pub const fn max_combo(&self) -> u32 {
         self.max_combo
     }
 
@@ -86,17 +76,17 @@ impl Scoring {
         self.cascade_count = 0;
     }
 
-    const fn calculate_cascade_multiplier(&mut self) -> u16 {
+    const fn calculate_cascade_multiplier(&mut self) -> u32 {
         // *1 *3 *4 *5 etc.
         self.cascade_count += 1;
         if self.cascade_count == 1 {
             return 1;
         }
-        1 + self.cascade_count as u16
+        1 + self.cascade_count as u32
     }
 
-    fn add_accumulated_points(&mut self) {
-        self.score += u32::from(self.accumulated_points);
+    const fn add_accumulated_points(&mut self) {
+        self.score = self.score.saturating_add(self.accumulated_points);
 
         if self.accumulated_points > self.max_combo {
             self.max_combo = self.accumulated_points;
@@ -109,14 +99,14 @@ impl Scoring {
         }
     }
 
-    const fn calculate_level(score: u32) -> u16 {
+    const fn calculate_level(score: u32) -> u32 {
         match score {
             0..50 => 1,
             50..150 => 2,
             150..300 => 3,
             300..500 => 4,
             // For scores 500 and above, every 250 points is a new level
-            _ => 5 + ((score - 500) / 250) as u16,
+            _ => 5 + (score - 500) / 250,
         }
     }
 
@@ -137,14 +127,98 @@ impl Scoring {
         };
 
         match std::fs::read_to_string(&file_path) {
-            Ok(contents) => Ok(contents.trim().parse::<u32>()?),
+            Ok(contents) => Self::parse_highscore(contents.trim()),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(0),
             Err(err) => Err(err.into()),
         }
     }
 
+    fn parse_highscore(input: &str) -> Result<u32, errors::Error> {
+        let bytes = input.as_bytes();
+        let Some(&first) = bytes.first() else {
+            return Err(errors::Error::ParseIntEmpty);
+        };
+
+        let mut index = usize::from(first == b'+');
+        if index == bytes.len() {
+            return Err(errors::Error::ParseIntInvalidDigit);
+        }
+
+        let mut value = 0_u32;
+        while index < bytes.len() {
+            let digit = bytes[index].wrapping_sub(b'0');
+            if digit > 9 {
+                return Err(errors::Error::ParseIntInvalidDigit);
+            }
+
+            let Some(next_value) = value.checked_mul(10).and_then(|value| value.checked_add(u32::from(digit))) else {
+                return Err(errors::Error::ParseIntPosOverflow);
+            };
+            value = next_value;
+            index += 1;
+        }
+
+        Ok(value)
+    }
+
     #[allow(clippy::single_option_map)]
     fn get_highscore_file_path(app_data_dir_path: Option<&Path>) -> Option<PathBuf> {
         app_data_dir_path.map(|path| path.join(Self::HIGHSCORE_FILE_NAME))
+    }
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+#[cfg(test)]
+mod tests {
+    use super::Scoring;
+
+    #[test]
+    fn applies_match_and_cascade_products() {
+        let mut scoring = Scoring::new(None).expect("scoring without persistence should initialize");
+
+        scoring.add(3);
+        assert_eq!(scoring.score(), 3);
+
+        scoring.add(3);
+        assert_eq!(scoring.score(), 15);
+    }
+
+    #[test]
+    fn saturates_points_at_the_score_limit() {
+        let mut scoring = Scoring::new(None).expect("scoring without persistence should initialize");
+
+        scoring.add(u32::MAX);
+        scoring.add(u32::MAX);
+
+        assert_eq!(scoring.score(), u32::MAX);
+        assert_eq!(scoring.max_combo(), u32::MAX);
+    }
+
+    #[test]
+    fn compact_highscore_parser_matches_u32_parsing() {
+        let cases = [
+            "",
+            "+",
+            "-",
+            "0",
+            "+0",
+            "0001",
+            "42",
+            "4294967295",
+            "4294967296",
+            "-1",
+            "1a",
+            "１２",
+            "00000000000000000000000000000000000000000000000001",
+            "99999999999999999999999999999999999999999999999999",
+        ];
+
+        for input in cases {
+            let expected = input.parse::<u32>().map_err(|error| error.to_string());
+            let actual = Scoring::parse_highscore(input).map_err(|error| error.to_string());
+            assert_eq!(actual, expected, "input: {input:?}");
+        }
     }
 }

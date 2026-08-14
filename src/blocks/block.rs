@@ -27,6 +27,8 @@ macro_rules! define_block_variants {
             /// or time result in major shifts in color, disrupting the geometric
             /// patterns (like vertical stripes) that naturally emerge when mapping
             /// linear coordinates onto a small set of `Gem` variants.
+            #[cold]
+            #[inline(never)]
             pub fn random_for_pause(seed: u64) -> Self {
                 let mut hash = seed;
                 hash ^= hash >> 33;
@@ -79,10 +81,10 @@ impl GemBlock {
 // =============================================================================
 impl Widget for GemBlock {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let x = area.x + u16::from(self.x) * 2;
         let Some(y) = area.y.checked_add_signed(i16::from(self.y)) else {
             return;
         };
+        let x = area.x + u16::from(self.x) * 2;
 
         let style = Style::from(self.gem);
 

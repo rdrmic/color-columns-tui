@@ -4,7 +4,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     game_state::GameState,
-    stage_handlers::{FRAME_DURATION, GameOverHandler, PausedHandler, Stage, StageHandler},
+    stage_handlers::{FRAME_DURATION, GameOverHandler, PausedHandler, Stage, StageHandler, StageTransition},
     visual_effects::Blinking,
 };
 
@@ -32,31 +32,36 @@ impl GameplayHandler {
 }
 
 impl StageHandler for GameplayHandler {
-    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> Option<Stage> {
-        match key_event.code {
-            KeyCode::Left => game.move_left(),
-            KeyCode::Right => game.move_right(),
-            KeyCode::Up => game.rotate_up(),
-            KeyCode::Down => game.rotate_down(),
-            KeyCode::Char('0') | KeyCode::Insert => {
-                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
-                    return Some(gameover_stage);
-                }
+    fn handle_key_pressed_event(&mut self, game: &mut GameState, key_event: KeyEvent) -> StageTransition {
+        Ok(match key_event.code {
+            KeyCode::Left => {
+                game.move_left();
+                None
             }
+            KeyCode::Right => {
+                game.move_right();
+                None
+            }
+            KeyCode::Up => {
+                game.rotate_up();
+                None
+            }
+            KeyCode::Down => {
+                game.rotate_down();
+                None
+            }
+            KeyCode::Char('0') | KeyCode::Insert => self.try_updating_tick(game, Instant::now()),
             KeyCode::Char(' ') => {
                 game.drop();
-                if let Some(gameover_stage) = self.try_updating_tick(game, Instant::now()) {
-                    return Some(gameover_stage);
-                }
+                self.try_updating_tick(game, Instant::now())
             }
-            KeyCode::Esc => return Some(Stage::Paused(PausedHandler::new(game))),
-            _ => (),
-        }
-        None
+            KeyCode::Esc => Some(Stage::Paused(PausedHandler::new(game))),
+            _ => None,
+        })
     }
 
     fn time_before_next_tick(&mut self, game: &mut GameState) -> Duration {
-        let time_before_next_game_tick = game.current_tick_duration().checked_sub(self.gravity_time.elapsed()).unwrap_or(Duration::ZERO);
+        let time_before_next_game_tick = game.current_tick_duration().saturating_sub(self.gravity_time.elapsed());
         FRAME_DURATION.min(time_before_next_game_tick)
     }
 
@@ -91,7 +96,7 @@ pub struct BlinkingLabels {
 }
 
 impl BlinkingLabels {
-    fn new(game: &GameState) -> Self {
+    const fn new(game: &GameState) -> Self {
         let (level, max_combo, highscore) = Self::get_label_values(game);
 
         Self {
@@ -127,9 +132,9 @@ impl BlinkingLabels {
         }
     }
 
-    fn get_label_values(game: &GameState) -> (u32, u32, u32) {
+    const fn get_label_values(game: &GameState) -> (u32, u32, u32) {
         let scoring = game.scoring();
-        (u32::from(scoring.level()), u32::from(scoring.max_combo()), scoring.highscore())
+        (scoring.level(), scoring.max_combo(), scoring.highscore())
     }
 }
 
@@ -155,10 +160,8 @@ impl BlinkingLabel {
         if current_value > self.value {
             self.value = current_value;
             self.blinking = Some(Blinking::new());
-        }
-
-        if let Some(blinking) = self.blinking.as_mut() {
-            blinking.update();
+        } else if self.blinking.as_ref().is_some_and(Blinking::is_finished) {
+            self.blinking = None;
         }
     }
 }

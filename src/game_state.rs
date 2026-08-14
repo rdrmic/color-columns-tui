@@ -1,12 +1,12 @@
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
     blocks::{Column, FallingColumnPlaceholder, MatchingStructure, Pile},
-    errors::{self, Context},
-    messages::{Message, MessageType},
+    errors,
+    messages::Message,
     scoring::Scoring,
     stage_handlers::FRAME_DURATION,
 };
@@ -14,7 +14,7 @@ use crate::{
 #[derive(Copy, Clone)]
 enum GameplayState {
     FallingColumn,
-    ClearingMatches(u64),
+    ClearingMatches(u32),
     ApplyingHangingGemsGravity,
 }
 
@@ -38,15 +38,13 @@ impl GameState {
     const MIN_TICK_DURATION: Duration = Duration::from_millis(50);
     const ACCELERATION_FACTOR: u8 = 95; // Reduce the current tick duration by 5%
 
-    pub fn new(app_data_dir_path: Option<&Path>) -> Result<Self, errors::Error> {
-        let app_data_dir_path = app_data_dir_path.map(PathBuf::from);
-
+    pub fn new(app_data_dir_path: Option<PathBuf>) -> Result<Self, errors::Error> {
         let mut rng = create_rng()?;
 
         Ok(Self {
             column_next: Self::create_column(&mut rng),
             column_falling: Column::placeholder(),
-            pile: Pile::new(BOARD_WIDTH, BOARD_HEIGHT),
+            pile: Pile::new(),
             scoring: Scoring::new(app_data_dir_path.as_deref())?,
             current_tick_duration: Self::INITIAL_TICK_DURATION,
             gameplay_state: GameplayState::FallingColumn,
@@ -180,7 +178,7 @@ impl GameState {
     pub fn tick(&mut self) -> bool {
         let is_gameplay_running = match self.gameplay_state {
             GameplayState::FallingColumn => self.tick_falling_column(),
-            GameplayState::ClearingMatches(bit_packed_points) => self.tick_clearing_matches(bit_packed_points),
+            GameplayState::ClearingMatches(match_points) => self.tick_clearing_matches(match_points),
             GameplayState::ApplyingHangingGemsGravity => self.tick_applying_hanging_gems_gravity(),
         };
 
@@ -215,14 +213,14 @@ impl GameState {
         true
     }
 
-    fn tick_clearing_matches(&mut self, bit_packed_points: u64) -> bool {
+    fn tick_clearing_matches(&mut self, match_points: u32) -> bool {
         if self.pile.clear_matches() {
             return true;
         }
 
-        self.scoring.add(bit_packed_points);
+        self.scoring.add(match_points);
         if self.scoring.is_level_increased() {
-            let message = Message::new_fading(MessageType::LevelUp, 28, 5);
+            let message = Message::new_level_up();
             self.set_message(Some(message));
 
             self.accelerate();
@@ -243,13 +241,8 @@ impl GameState {
 
     #[rustfmt::skip]
     fn get_game_state_after_matches_search(pile: &mut Pile, matching_structure: MatchingStructure) -> GameplayState {
-        let bit_packed_points = pile.find_matches(matching_structure);
-
-        if bit_packed_points > 0 {
-            GameplayState::ClearingMatches(bit_packed_points)
-        } else {
-            GameplayState::FallingColumn
-        }
+        pile.find_matches(matching_structure)
+            .map_or(GameplayState::FallingColumn, GameplayState::ClearingMatches)
     }
 }
 
@@ -259,9 +252,10 @@ impl GameState {
 #[rustfmt::skip]
 fn create_rng() -> Result<fastrand::Rng, errors::Error> {
     let now = SystemTime::now();
-    let seed = now.duration_since(UNIX_EPOCH)
-        .context("Failed to generate random seed from system time: system clock is set before year 1970")?
-        .as_millis() as u64;
+    let seed = match now.duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_millis() as u64,
+        Err(_) => return Err(errors::Error::ClockBeforeUnixEpoch),
+    };
 
     log::debug!("Using random seed: {seed}");
     Ok(fastrand::Rng::with_seed(seed))

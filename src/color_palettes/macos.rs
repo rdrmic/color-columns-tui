@@ -19,9 +19,9 @@ pub const GEM_AMBER: Color = byte_to_color(ORANGE);
 
 // --- Stats ---
 pub const STAT_LEVEL: Color = byte_to_color(ORANGE_BRIGHT);
-pub const STAT_SCORE: Color = byte_to_color(GREEN);
-pub const STAT_MAX_COMBO: Color = byte_to_color(BLUE);
-pub const STAT_HIGHSCORE: Color = byte_to_color(RED);
+pub const STAT_LABEL_SCORE: Color = byte_to_color(GREEN);
+pub const STAT_LABEL_MAX_COMBO: Color = byte_to_color(BLUE);
+pub const STAT_LABEL_HIGHSCORE: Color = byte_to_color(RED);
 pub const STATS_VALUE: Color = byte_to_color(CYAN_LIGHT);
 
 // --- UI & layout ---
@@ -29,7 +29,7 @@ pub const UI_CANVAS_BG: Color = byte_to_color(BLUE_DARK);
 pub const UI_CANVAS_FG: Color = byte_to_color(GREEN);
 pub const UI_GAME_BORDER: Color = byte_to_color(GRAY_MEDIUM);
 pub const UI_LEGEND_KEY: Color = byte_to_color(GREEN_KHAKI);
-pub const UI_LEGEND_VALUE: Color = byte_to_color(GRAY_LIGHT);
+pub const UI_LEGEND_ACTION: Color = byte_to_color(GRAY_LIGHT);
 pub const UI_LEGEND_BORDER: Color = byte_to_color(GRAY_MEDIUM);
 
 // --- Console messages ---

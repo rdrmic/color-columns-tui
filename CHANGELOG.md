@@ -1,3 +1,18 @@
+## 0.1.14 / 2026-08-15
+
+- Fix error propagation in `StageHandler::handle_key_pressed_event` implementations
+- Add tests
+- Make various simplifications and improvements
+- Binary size optimizations: (-65,144 B)
+  - Replace Ratatui's block and text rendering abstractions with direct buffer drawing
+  - Render the Instructions screen without `format!` or `String` allocations
+  - Apply binary-size optimizations throughout the application
+  - Enable `std`'s `optimize_for_size` feature while retaining the default `backtrace` and `panic-unwind` features
+
+```bash
+357 KiB (365,448 B)
+```
+
 ## 0.1.13 / 2026-07-24
 
 - Improve colors in macOS's and other terminals
@@ -7,7 +22,7 @@
 - Make "Game over!" message blink
 - Binary size optimizations: (-34,656 B)
   - Consolidate and optimize creating `Style`s
-  - Layout calculations using `Rect` arithmetic
+  - Rewrite layout calculations using `Rect` arithmetic
 
 ```bash
 421 KiB (430,592 B)
@@ -48,8 +63,8 @@
 - Isolate ticking for fading messages
 - Drain any remaining events in the buffer before drawing
 - Macroize `StageHandler` static dispatch delegation
-- Binary size optimizations:
-  - Use toolchain `nightly-2026-06-09` (-80 B)
+- Binary size optimizations: (-80 B)
+  - Use toolchain `nightly-2026-06-09`
 
 ```bash
 459 KiB (469,904 B)
@@ -108,8 +123,8 @@
 - Improve messages' fading out
 - Clean up TODOs and FIXMEs
 - Bump Rust version: 1.95.0 -> 1.96.0
-- Binary size optimizations:
-  - Use toolchain `nightly-2026-06-01` (-1,712 B)
+- Binary size optimizations: (-~1.5 KiB)
+  - Use toolchain `nightly-2026-06-01`
 
 ```bash
 459 KiB (469,120 B)
@@ -139,7 +154,7 @@
 
 ## 0.1.2 / 2026-05-09
 
-- Binary size optimizations:
+- Binary size optimizations: (-65,472 B)
   - Use linker garbage collection and ICF (Identical Code Folding): `-Clink-arg=-Wl,--gc-sections` and `-Clink-arg=-Wl,--icf=all` (-6,528 B)
   - Enable `-Zlocation-detail=none`  (-37,424 B)
   - Enable `-Zfmt-debug=none` (-9,920 B)
@@ -155,9 +170,8 @@
 - Skip tick if there aren't hanging blocks
 - Log random seed for reproducibility
 - Simplify `GameOverHandler`
-- Binary size optimizations:
+- Binary size optimizations: (-~2.5 KiB)
   - Render key legends dynamically
-  - Remove all `#[derive(Debug)]` attributes
   - Implement `Debug` for `Error` in `errors.rs`
   - Replace `with_context` debug-formatted message with unified `.context` one in `game.rs`: `create_rng`
   - Eliminate `f64` math for acceleration calculation
@@ -200,7 +214,7 @@
 
 ## 0.0.13 / 2026-04-28
 
-- Binary size optimizations:
+- Binary size optimizations: (-121,192 B)
   - Change `lto = true` to `lto = "fat"`
   - Add `features = ["release_max_level_off"]` to `log`
   - Replace `env_logger` with a simple custom logger
@@ -300,7 +314,7 @@
 - Improve `dev_console.rs` by introducing `std::sync::mpsc` for log messages
 - Make crate-wide available macros for colored logging to dev console
 - Greatly improve `main.rs`: robustness, flexibility regarding non-essential conditions for app starting, error handling, panic protection, terminal restoration, logging
-- Binary size optimizations:
+- Binary size optimizations: (-~8.5 KiB)
   - opt-level = "z"
 
 ```bash

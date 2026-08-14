@@ -23,7 +23,7 @@ pub fn check_size() -> Result<(), errors::Error> {
 }
 
 pub fn set_title() {
-    let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(&TERMINAL_TITLE))
+    let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(TERMINAL_TITLE))
         .inspect(|()| log::info!("Terminal title '{TERMINAL_TITLE}' set"))
         .inspect_err(|e| log::warn!("Settting terminal title ({TERMINAL_TITLE}) failed: {e}"));
 }
